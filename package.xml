@@ -2,8 +2,8 @@
 <package xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" packagerversion="1.6.1" version="2.0" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0 http://pear.php.net/dtd/tasks-1.0.xsd http://pear.php.net/dtd/package-2.0 http://pear.php.net/dtd/package-2.0.xsd">
  <name>amSimplePiePlugin</name>
  <channel>pear.symfony-project.com</channel>
- <summary>The purpose of this plugin is to facilitate the use of SimplePie whithin a Symfony project.</summary>
- <description>The purpose of this plugin is to facilitate the use of SimplePie whithin a Symfony project:
+ <summary>The purpose of this plugin is to facilitate the use of SimplePie within a Symfony project.</summary>
+ <description>The purpose of this plugin is to facilitate the use of SimplePie within a Symfony project:
    - it allows you to autoload the SimplePie class
    - it uses the Symfony cache directory</description>
  <lead>

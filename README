@@ -1,7 +1,7 @@
 # amSimplePiePlugin
 
 The purpose of this plugin is to facilitate the use of SimplePie
-whithin a Symfony project:
+within a Symfony project:
 
 * it allows you to autoload the SimplePie class
 * it uses the Symfony cache directory
