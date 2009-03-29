@@ -33,7 +33,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * @package SimplePie
- * @version 1.1.1
+ * @version 1.1.3
  * @copyright 2004-2008 Ryan Parman, Geoffrey Sneddon
  * @author Ryan Parman
  * @author Geoffrey Sneddon
@@ -51,14 +51,12 @@ define('SIMPLEPIE_NAME', 'SimplePie');
 /**
  * SimplePie Version
  */
-define('SIMPLEPIE_VERSION', '1.1.1');
+define('SIMPLEPIE_VERSION', '1.1.3');
 
 /**
  * SimplePie Build
- * @todo Hardcode for release (there's no need to have to call SimplePie_Misc::parse_date() only every load of simplepie.inc)
  */
-define('SIMPLEPIE_BUILD', 20080315205903);
-//define('SIMPLEPIE_BUILD', gmdate('YmdHis', SimplePie_Misc::parse_date(substr('$Date: 2008-03-15 15:28:23 -0700 (Sat, 15 Mar 2008) $', 7, 25)) ? SimplePie_Misc::parse_date(substr('$Date: 2008-03-15 15:28:23 -0700 (Sat, 15 Mar 2008) $', 7, 25)) : filemtime(__FILE__)));
+define('SIMPLEPIE_BUILD', 20081219);
 
 /**
  * SimplePie Website URL
@@ -287,6 +285,12 @@ define('SIMPLEPIE_NAMESPACE_RSS_10', 'http://purl.org/rss/1.0/');
  * RSS 1.0 Content Module Namespace
  */
 define('SIMPLEPIE_NAMESPACE_RSS_10_MODULES_CONTENT', 'http://purl.org/rss/1.0/modules/content/');
+
+/**
+ * RSS 2.0 Namespace
+ * (Stupid, I know, but I'm certain it will confuse people less with support.)
+ */
+define('SIMPLEPIE_NAMESPACE_RSS_20', '');
 
 /**
  * DC 1.0 Namespace
@@ -713,7 +717,7 @@ class SimplePie
 	function SimplePie($feed_url = null, $cache_location = null, $cache_duration = null)
 	{
 		// Other objects, instances created here so we can set options on them
-		$this->sanitize = new SimplePie_Sanitize;
+		$this->sanitize =& new SimplePie_Sanitize;
 
 		// Set options if they're passed to the constructor
 		if ($cache_location !== null)
@@ -1080,7 +1084,7 @@ class SimplePie
 	{
 		if (SimplePie_Misc::is_subclass_of($class, 'SimplePie_Sanitize'))
 		{
-			$this->sanitize = new $class;
+			$this->sanitize =& new $class;
 			return true;
 		}
 		return false;
@@ -1588,7 +1592,7 @@ function embed_wmedia(width, height, link) {
 								{
 									$headers['if-none-match'] = '"' . $this->data['headers']['etag'] . '"';
 								}
-								$file = new $this->file_class($this->feed_url, $this->timeout/10, 5, $headers, $this->useragent, $this->force_fsockopen);
+								$file =& new $this->file_class($this->feed_url, $this->timeout/10, 5, $headers, $this->useragent, $this->force_fsockopen);
 								if ($file->success)
 								{
 									if ($file->status_code == 304)
@@ -1629,7 +1633,7 @@ function embed_wmedia(width, height, link) {
 					}
 					else
 					{
-						$file = new $this->file_class($this->feed_url, $this->timeout, 5, null, $this->useragent, $this->force_fsockopen);
+						$file =& new $this->file_class($this->feed_url, $this->timeout, 5, null, $this->useragent, $this->force_fsockopen);
 					}
 				}
 				// If the file connection has an error, set SimplePie::error to that and quit
@@ -1649,7 +1653,7 @@ function embed_wmedia(width, height, link) {
 				if (!$this->force_feed)
 				{
 					// Check if the supplied URL is a feed, if it isn't, look for it.
-					$locate = new $this->locator_class($file, $this->timeout, $this->useragent, $this->file_class, $this->max_checked_feeds, $this->content_type_sniffer_class);
+					$locate =& new $this->locator_class($file, $this->timeout, $this->useragent, $this->file_class, $this->max_checked_feeds, $this->content_type_sniffer_class);
 					if (!$locate->is_feed($file))
 					{
 						// We need to unset this so that if SimplePie::set_file() has been called that object is untouched
@@ -1746,35 +1750,36 @@ function embed_wmedia(width, height, link) {
 			foreach ($encodings as $encoding)
 			{
 				// Change the encoding to UTF-8 (as we always use UTF-8 internally)
-				$utf8_data = SimplePie_Misc::change_encoding($data, $encoding, 'UTF-8');
-
-				// Create new parser
-				$parser = new $this->parser_class();
-
-				// If it's parsed fine
-				if ($parser->parse($utf8_data, 'UTF-8'))
+				if ($utf8_data = SimplePie_Misc::change_encoding($data, $encoding, 'UTF-8'))
 				{
-					$this->data = $parser->get_data();
-					if (isset($this->data['child']))
-					{
-						if (isset($headers))
-						{
-							$this->data['headers'] = $headers;
-						}
-						$this->data['build'] = SIMPLEPIE_BUILD;
+					// Create new parser
+					$parser =& new $this->parser_class();
 
-						// Cache the file if caching is enabled
-						if ($cache && !$cache->save($this))
-						{
-							trigger_error("$cache->name is not writeable", E_USER_WARNING);
-						}
-						return true;
-					}
-					else
+					// If it's parsed fine
+					if ($parser->parse($utf8_data, 'UTF-8'))
 					{
-						$this->error = "A feed could not be found at $this->feed_url";
-						SimplePie_Misc::error($this->error, E_USER_NOTICE, __FILE__, __LINE__);
-						return false;
+						$this->data = $parser->get_data();
+						if ($this->get_type() & ~SIMPLEPIE_TYPE_NONE)
+						{
+							if (isset($headers))
+							{
+								$this->data['headers'] = $headers;
+							}
+							$this->data['build'] = SIMPLEPIE_BUILD;
+
+							// Cache the file if caching is enabled
+							if ($cache && !$cache->save($this))
+							{
+								trigger_error("$cache->name is not writeable", E_USER_WARNING);
+							}
+							return true;
+						}
+						else
+						{
+							$this->error = "A feed could not be found at $this->feed_url";
+							SimplePie_Misc::error($this->error, E_USER_NOTICE, __FILE__, __LINE__);
+							return false;
+						}
 					}
 				}
 			}
@@ -1952,7 +1957,7 @@ function embed_wmedia(width, height, link) {
 				}
 				else
 				{
-					$file = new $this->file_class($favicon, $this->timeout / 10, 5, array('X-FORWARDED-FOR' => $_SERVER['REMOTE_ADDR']), $this->useragent, $this->force_fsockopen);
+					$file =& new $this->file_class($favicon, $this->timeout / 10, 5, array('X-FORWARDED-FOR' => $_SERVER['REMOTE_ADDR']), $this->useragent, $this->force_fsockopen);
 
 					if ($file->success && ($file->status_code == 200 || ($file->status_code > 206 && $file->status_code < 300)) && strlen($file->body) > 0)
 					{
@@ -2350,19 +2355,19 @@ function embed_wmedia(width, height, link) {
 			{
 				$label = $this->sanitize($category['attribs']['']['label'], SIMPLEPIE_CONSTRUCT_TEXT);
 			}
-			$categories[] = new $this->category_class($term, $scheme, $label);
+			$categories[] =& new $this->category_class($term, $scheme, $label);
 		}
 		foreach ((array) $this->get_channel_tags('', 'category') as $category)
 		{
-			$categories[] = new $this->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$categories[] =& new $this->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_channel_tags(SIMPLEPIE_NAMESPACE_DC_11, 'subject') as $category)
 		{
-			$categories[] = new $this->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$categories[] =& new $this->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_channel_tags(SIMPLEPIE_NAMESPACE_DC_10, 'subject') as $category)
 		{
-			$categories[] = new $this->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$categories[] =& new $this->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 
 		if (!empty($categories))
@@ -2410,7 +2415,7 @@ function embed_wmedia(width, height, link) {
 			}
 			if ($name !== null || $email !== null || $uri !== null)
 			{
-				$authors[] = new $this->author_class($name, $uri, $email);
+				$authors[] =& new $this->author_class($name, $uri, $email);
 			}
 		}
 		if ($author = $this->get_channel_tags(SIMPLEPIE_NAMESPACE_ATOM_03, 'author'))
@@ -2432,20 +2437,20 @@ function embed_wmedia(width, height, link) {
 			}
 			if ($name !== null || $email !== null || $url !== null)
 			{
-				$authors[] = new $this->author_class($name, $url, $email);
+				$authors[] =& new $this->author_class($name, $url, $email);
 			}
 		}
 		foreach ((array) $this->get_channel_tags(SIMPLEPIE_NAMESPACE_DC_11, 'creator') as $author)
 		{
-			$authors[] = new $this->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$authors[] =& new $this->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_channel_tags(SIMPLEPIE_NAMESPACE_DC_10, 'creator') as $author)
 		{
-			$authors[] = new $this->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$authors[] =& new $this->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_channel_tags(SIMPLEPIE_NAMESPACE_ITUNES, 'author') as $author)
 		{
-			$authors[] = new $this->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$authors[] =& new $this->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 
 		if (!empty($authors))
@@ -2493,7 +2498,7 @@ function embed_wmedia(width, height, link) {
 			}
 			if ($name !== null || $email !== null || $uri !== null)
 			{
-				$contributors[] = new $this->author_class($name, $uri, $email);
+				$contributors[] =& new $this->author_class($name, $uri, $email);
 			}
 		}
 		foreach ((array) $this->get_channel_tags(SIMPLEPIE_NAMESPACE_ATOM_03, 'contributor') as $contributor)
@@ -2515,7 +2520,7 @@ function embed_wmedia(width, height, link) {
 			}
 			if ($name !== null || $email !== null || $url !== null)
 			{
-				$contributors[] = new $this->author_class($name, $url, $email);
+				$contributors[] =& new $this->author_class($name, $url, $email);
 			}
 		}
 
@@ -2919,7 +2924,7 @@ function embed_wmedia(width, height, link) {
 				$keys = array_keys($items);
 				foreach ($keys as $key)
 				{
-					$this->data['items'][] = new $this->item_class($this, $items[$key]);
+					$this->data['items'][] =& new $this->item_class($this, $items[$key]);
 				}
 			}
 			if ($items = $this->get_feed_tags(SIMPLEPIE_NAMESPACE_ATOM_03, 'entry'))
@@ -2927,7 +2932,7 @@ function embed_wmedia(width, height, link) {
 				$keys = array_keys($items);
 				foreach ($keys as $key)
 				{
-					$this->data['items'][] = new $this->item_class($this, $items[$key]);
+					$this->data['items'][] =& new $this->item_class($this, $items[$key]);
 				}
 			}
 			if ($items = $this->get_feed_tags(SIMPLEPIE_NAMESPACE_RSS_10, 'item'))
@@ -2935,7 +2940,7 @@ function embed_wmedia(width, height, link) {
 				$keys = array_keys($items);
 				foreach ($keys as $key)
 				{
-					$this->data['items'][] = new $this->item_class($this, $items[$key]);
+					$this->data['items'][] =& new $this->item_class($this, $items[$key]);
 				}
 			}
 			if ($items = $this->get_feed_tags(SIMPLEPIE_NAMESPACE_RSS_090, 'item'))
@@ -2943,7 +2948,7 @@ function embed_wmedia(width, height, link) {
 				$keys = array_keys($items);
 				foreach ($keys as $key)
 				{
-					$this->data['items'][] = new $this->item_class($this, $items[$key]);
+					$this->data['items'][] =& new $this->item_class($this, $items[$key]);
 				}
 			}
 			if ($items = $this->get_channel_tags('', 'item'))
@@ -2951,7 +2956,7 @@ function embed_wmedia(width, height, link) {
 				$keys = array_keys($items);
 				foreach ($keys as $key)
 				{
-					$this->data['items'][] = new $this->item_class($this, $items[$key]);
+					$this->data['items'][] =& new $this->item_class($this, $items[$key]);
 				}
 			}
 		}
@@ -3292,19 +3297,19 @@ class SimplePie_Item
 			{
 				$label = $this->sanitize($category['attribs']['']['label'], SIMPLEPIE_CONSTRUCT_TEXT);
 			}
-			$categories[] = new $this->feed->category_class($term, $scheme, $label);
+			$categories[] =& new $this->feed->category_class($term, $scheme, $label);
 		}
 		foreach ((array) $this->get_item_tags('', 'category') as $category)
 		{
-			$categories[] = new $this->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$categories[] =& new $this->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_item_tags(SIMPLEPIE_NAMESPACE_DC_11, 'subject') as $category)
 		{
-			$categories[] = new $this->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$categories[] =& new $this->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_item_tags(SIMPLEPIE_NAMESPACE_DC_10, 'subject') as $category)
 		{
-			$categories[] = new $this->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$categories[] =& new $this->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 
 		if (!empty($categories))
@@ -3365,7 +3370,7 @@ class SimplePie_Item
 			}
 			if ($name !== null || $email !== null || $uri !== null)
 			{
-				$contributors[] = new $this->feed->author_class($name, $uri, $email);
+				$contributors[] =& new $this->feed->author_class($name, $uri, $email);
 			}
 		}
 		foreach ((array) $this->get_item_tags(SIMPLEPIE_NAMESPACE_ATOM_03, 'contributor') as $contributor)
@@ -3387,7 +3392,7 @@ class SimplePie_Item
 			}
 			if ($name !== null || $email !== null || $url !== null)
 			{
-				$contributors[] = new $this->feed->author_class($name, $url, $email);
+				$contributors[] =& new $this->feed->author_class($name, $url, $email);
 			}
 		}
 
@@ -3426,7 +3431,7 @@ class SimplePie_Item
 			}
 			if ($name !== null || $email !== null || $uri !== null)
 			{
-				$authors[] = new $this->feed->author_class($name, $uri, $email);
+				$authors[] =& new $this->feed->author_class($name, $uri, $email);
 			}
 		}
 		if ($author = $this->get_item_tags(SIMPLEPIE_NAMESPACE_ATOM_03, 'author'))
@@ -3448,24 +3453,24 @@ class SimplePie_Item
 			}
 			if ($name !== null || $email !== null || $url !== null)
 			{
-				$authors[] = new $this->feed->author_class($name, $url, $email);
+				$authors[] =& new $this->feed->author_class($name, $url, $email);
 			}
 		}
 		if ($author = $this->get_item_tags('', 'author'))
 		{
-			$authors[] = new $this->feed->author_class(null, null, $this->sanitize($author[0]['data'], SIMPLEPIE_CONSTRUCT_TEXT));
+			$authors[] =& new $this->feed->author_class(null, null, $this->sanitize($author[0]['data'], SIMPLEPIE_CONSTRUCT_TEXT));
 		}
 		foreach ((array) $this->get_item_tags(SIMPLEPIE_NAMESPACE_DC_11, 'creator') as $author)
 		{
-			$authors[] = new $this->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$authors[] =& new $this->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_item_tags(SIMPLEPIE_NAMESPACE_DC_10, 'creator') as $author)
 		{
-			$authors[] = new $this->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$authors[] =& new $this->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_item_tags(SIMPLEPIE_NAMESPACE_ITUNES, 'author') as $author)
 		{
-			$authors[] = new $this->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$authors[] =& new $this->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 
 		if (!empty($authors))
@@ -3775,7 +3780,7 @@ class SimplePie_Item
 					{
 						$caption_text = $this->sanitize($caption['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 					}
-					$captions_parent[] = new $this->feed->caption_class($caption_type, $caption_lang, $caption_startTime, $caption_endTime, $caption_text);
+					$captions_parent[] =& new $this->feed->caption_class($caption_type, $caption_lang, $caption_startTime, $caption_endTime, $caption_text);
 				}
 			}
 			elseif ($captions = $parent->get_channel_tags(SIMPLEPIE_NAMESPACE_MEDIARSS, 'text'))
@@ -3807,7 +3812,7 @@ class SimplePie_Item
 					{
 						$caption_text = $this->sanitize($caption['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 					}
-					$captions_parent[] = new $this->feed->caption_class($caption_type, $caption_lang, $caption_startTime, $caption_endTime, $caption_text);
+					$captions_parent[] =& new $this->feed->caption_class($caption_type, $caption_lang, $caption_startTime, $caption_endTime, $caption_text);
 				}
 			}
 			if (is_array($captions_parent))
@@ -3837,7 +3842,7 @@ class SimplePie_Item
 				{
 					$label = $this->sanitize($category['attribs']['']['label'], SIMPLEPIE_CONSTRUCT_TEXT);
 				}
-				$categories_parent[] = new $this->feed->category_class($term, $scheme, $label);
+				$categories_parent[] =& new $this->feed->category_class($term, $scheme, $label);
 			}
 			foreach ((array) $parent->get_channel_tags(SIMPLEPIE_NAMESPACE_MEDIARSS, 'category') as $category)
 			{
@@ -3860,7 +3865,7 @@ class SimplePie_Item
 				{
 					$label = $this->sanitize($category['attribs']['']['label'], SIMPLEPIE_CONSTRUCT_TEXT);
 				}
-				$categories_parent[] = new $this->feed->category_class($term, $scheme, $label);
+				$categories_parent[] =& new $this->feed->category_class($term, $scheme, $label);
 			}
 			foreach ((array) $parent->get_channel_tags(SIMPLEPIE_NAMESPACE_ITUNES, 'category') as $category)
 			{
@@ -3871,7 +3876,7 @@ class SimplePie_Item
 				{
 					$label = $this->sanitize($category['attribs']['']['text'], SIMPLEPIE_CONSTRUCT_TEXT);
 				}
-				$categories_parent[] = new $this->feed->category_class($term, $scheme, $label);
+				$categories_parent[] =& new $this->feed->category_class($term, $scheme, $label);
 
 				if (isset($category['child'][SIMPLEPIE_NAMESPACE_ITUNES]['category']))
 				{
@@ -3881,7 +3886,7 @@ class SimplePie_Item
 						{
 							$label = $this->sanitize($subcategory['attribs']['']['text'], SIMPLEPIE_CONSTRUCT_TEXT);
 						}
-						$categories_parent[] = new $this->feed->category_class($term, $scheme, $label);
+						$categories_parent[] =& new $this->feed->category_class($term, $scheme, $label);
 					}
 				}
 			}
@@ -3903,7 +3908,7 @@ class SimplePie_Item
 				{
 					$copyright_label = $this->sanitize($copyright[0]['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 				}
-				$copyrights_parent = new $this->feed->copyright_class($copyright_url, $copyright_label);
+				$copyrights_parent =& new $this->feed->copyright_class($copyright_url, $copyright_label);
 			}
 			elseif ($copyright = $parent->get_channel_tags(SIMPLEPIE_NAMESPACE_MEDIARSS, 'copyright'))
 			{
@@ -3917,7 +3922,7 @@ class SimplePie_Item
 				{
 					$copyright_label = $this->sanitize($copyright[0]['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 				}
-				$copyrights_parent = new $this->feed->copyright_class($copyright_url, $copyright_label);
+				$copyrights_parent =& new $this->feed->copyright_class($copyright_url, $copyright_label);
 			}
 
 			// CREDITS
@@ -3944,7 +3949,7 @@ class SimplePie_Item
 					{
 						$credit_name = $this->sanitize($credit['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 					}
-					$credits_parent[] = new $this->feed->credit_class($credit_role, $credit_scheme, $credit_name);
+					$credits_parent[] =& new $this->feed->credit_class($credit_role, $credit_scheme, $credit_name);
 				}
 			}
 			elseif ($credits = $parent->get_channel_tags(SIMPLEPIE_NAMESPACE_MEDIARSS, 'credit'))
@@ -3970,7 +3975,7 @@ class SimplePie_Item
 					{
 						$credit_name = $this->sanitize($credit['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 					}
-					$credits_parent[] = new $this->feed->credit_class($credit_role, $credit_scheme, $credit_name);
+					$credits_parent[] =& new $this->feed->credit_class($credit_role, $credit_scheme, $credit_name);
 				}
 			}
 			if (is_array($credits_parent))
@@ -4159,7 +4164,7 @@ class SimplePie_Item
 					{
 						$rating_value = $this->sanitize($rating['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 					}
-					$ratings_parent[] = new $this->feed->rating_class($rating_scheme, $rating_value);
+					$ratings_parent[] =& new $this->feed->rating_class($rating_scheme, $rating_value);
 				}
 			}
 			elseif ($ratings = $this->get_item_tags(SIMPLEPIE_NAMESPACE_ITUNES, 'explicit'))
@@ -4172,7 +4177,7 @@ class SimplePie_Item
 					{
 						$rating_value = $this->sanitize($rating['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 					}
-					$ratings_parent[] = new $this->feed->rating_class($rating_scheme, $rating_value);
+					$ratings_parent[] =& new $this->feed->rating_class($rating_scheme, $rating_value);
 				}
 			}
 			elseif ($ratings = $parent->get_channel_tags(SIMPLEPIE_NAMESPACE_MEDIARSS, 'rating'))
@@ -4193,7 +4198,7 @@ class SimplePie_Item
 					{
 						$rating_value = $this->sanitize($rating['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 					}
-					$ratings_parent[] = new $this->feed->rating_class($rating_scheme, $rating_value);
+					$ratings_parent[] =& new $this->feed->rating_class($rating_scheme, $rating_value);
 				}
 			}
 			elseif ($ratings = $parent->get_channel_tags(SIMPLEPIE_NAMESPACE_ITUNES, 'explicit'))
@@ -4206,7 +4211,7 @@ class SimplePie_Item
 					{
 						$rating_value = $this->sanitize($rating['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 					}
-					$ratings_parent[] = new $this->feed->rating_class($rating_scheme, $rating_value);
+					$ratings_parent[] =& new $this->feed->rating_class($rating_scheme, $rating_value);
 				}
 			}
 			if (is_array($ratings_parent))
@@ -4234,7 +4239,7 @@ class SimplePie_Item
 					{
 						$restriction_value = $this->sanitize($restriction['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 					}
-					$restrictions_parent[] = new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
+					$restrictions_parent[] =& new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
 				}
 			}
 			elseif ($restrictions = $this->get_item_tags(SIMPLEPIE_NAMESPACE_ITUNES, 'block'))
@@ -4248,7 +4253,7 @@ class SimplePie_Item
 					{
 						$restriction_relationship = 'deny';
 					}
-					$restrictions_parent[] = new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
+					$restrictions_parent[] =& new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
 				}
 			}
 			elseif ($restrictions = $parent->get_channel_tags(SIMPLEPIE_NAMESPACE_MEDIARSS, 'restriction'))
@@ -4270,7 +4275,7 @@ class SimplePie_Item
 					{
 						$restriction_value = $this->sanitize($restriction['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 					}
-					$restrictions_parent[] = new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
+					$restrictions_parent[] =& new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
 				}
 			}
 			elseif ($restrictions = $parent->get_channel_tags(SIMPLEPIE_NAMESPACE_ITUNES, 'block'))
@@ -4284,7 +4289,7 @@ class SimplePie_Item
 					{
 						$restriction_relationship = 'deny';
 					}
-					$restrictions_parent[] = new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
+					$restrictions_parent[] =& new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
 				}
 			}
 			if (is_array($restrictions_parent))
@@ -4488,7 +4493,7 @@ class SimplePie_Item
 								{
 									$caption_text = $this->sanitize($caption['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$captions[] = new $this->feed->caption_class($caption_type, $caption_lang, $caption_startTime, $caption_endTime, $caption_text);
+								$captions[] =& new $this->feed->caption_class($caption_type, $caption_lang, $caption_startTime, $caption_endTime, $caption_text);
 							}
 							if (is_array($captions))
 							{
@@ -4524,7 +4529,7 @@ class SimplePie_Item
 								{
 									$caption_text = $this->sanitize($caption['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$captions[] = new $this->feed->caption_class($caption_type, $caption_lang, $caption_startTime, $caption_endTime, $caption_text);
+								$captions[] =& new $this->feed->caption_class($caption_type, $caption_lang, $caption_startTime, $caption_endTime, $caption_text);
 							}
 							if (is_array($captions))
 							{
@@ -4560,7 +4565,7 @@ class SimplePie_Item
 								{
 									$label = $this->sanitize($category['attribs']['']['label'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$categories[] = new $this->feed->category_class($term, $scheme, $label);
+								$categories[] =& new $this->feed->category_class($term, $scheme, $label);
 							}
 						}
 						if (isset($group['child'][SIMPLEPIE_NAMESPACE_MEDIARSS]['category']))
@@ -4586,7 +4591,7 @@ class SimplePie_Item
 								{
 									$label = $this->sanitize($category['attribs']['']['label'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$categories[] = new $this->feed->category_class($term, $scheme, $label);
+								$categories[] =& new $this->feed->category_class($term, $scheme, $label);
 							}
 						}
 						if (is_array($categories) && is_array($categories_parent))
@@ -4615,7 +4620,7 @@ class SimplePie_Item
 							{
 								$copyright_label = $this->sanitize($content['child'][SIMPLEPIE_NAMESPACE_MEDIARSS]['copyright'][0]['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 							}
-							$copyrights = new $this->feed->copyright_class($copyright_url, $copyright_label);
+							$copyrights =& new $this->feed->copyright_class($copyright_url, $copyright_label);
 						}
 						elseif (isset($group['child'][SIMPLEPIE_NAMESPACE_MEDIARSS]['copyright']))
 						{
@@ -4629,7 +4634,7 @@ class SimplePie_Item
 							{
 								$copyright_label = $this->sanitize($group['child'][SIMPLEPIE_NAMESPACE_MEDIARSS]['copyright'][0]['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 							}
-							$copyrights = new $this->feed->copyright_class($copyright_url, $copyright_label);
+							$copyrights =& new $this->feed->copyright_class($copyright_url, $copyright_label);
 						}
 						else
 						{
@@ -4660,7 +4665,7 @@ class SimplePie_Item
 								{
 									$credit_name = $this->sanitize($credit['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$credits[] = new $this->feed->credit_class($credit_role, $credit_scheme, $credit_name);
+								$credits[] =& new $this->feed->credit_class($credit_role, $credit_scheme, $credit_name);
 							}
 							if (is_array($credits))
 							{
@@ -4690,7 +4695,7 @@ class SimplePie_Item
 								{
 									$credit_name = $this->sanitize($credit['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$credits[] = new $this->feed->credit_class($credit_role, $credit_scheme, $credit_name);
+								$credits[] =& new $this->feed->credit_class($credit_role, $credit_scheme, $credit_name);
 							}
 							if (is_array($credits))
 							{
@@ -4843,7 +4848,7 @@ class SimplePie_Item
 								{
 									$rating_value = $this->sanitize($rating['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$ratings[] = new $this->feed->rating_class($rating_scheme, $rating_value);
+								$ratings[] =& new $this->feed->rating_class($rating_scheme, $rating_value);
 							}
 							if (is_array($ratings))
 							{
@@ -4868,7 +4873,7 @@ class SimplePie_Item
 								{
 									$rating_value = $this->sanitize($rating['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$ratings[] = new $this->feed->rating_class($rating_scheme, $rating_value);
+								$ratings[] =& new $this->feed->rating_class($rating_scheme, $rating_value);
 							}
 							if (is_array($ratings))
 							{
@@ -4900,7 +4905,7 @@ class SimplePie_Item
 								{
 									$restriction_value = $this->sanitize($restriction['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$restrictions[] = new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
+								$restrictions[] =& new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
 							}
 							if (is_array($restrictions))
 							{
@@ -4926,7 +4931,7 @@ class SimplePie_Item
 								{
 									$restriction_value = $this->sanitize($restriction['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$restrictions[] = new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
+								$restrictions[] =& new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
 							}
 							if (is_array($restrictions))
 							{
@@ -4980,7 +4985,7 @@ class SimplePie_Item
 							$title = $title_parent;
 						}
 
-						$this->data['enclosures'][] = new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions, $categories, $channels, $copyrights, $credits, $description, $duration, $expression, $framerate, $hashes, $height, $keywords, $lang, $medium, $player, $ratings, $restrictions, $samplingrate, $thumbnails, $title, $width);
+						$this->data['enclosures'][] =& new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions, $categories, $channels, $copyrights, $credits, $description, $duration, $expression, $framerate, $hashes, $height, $keywords, $lang, $medium, $player, $ratings, $restrictions, $samplingrate, $thumbnails, $title, $width);
 					}
 				}
 			}
@@ -5109,7 +5114,7 @@ class SimplePie_Item
 								{
 									$caption_text = $this->sanitize($caption['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$captions[] = new $this->feed->caption_class($caption_type, $caption_lang, $caption_startTime, $caption_endTime, $caption_text);
+								$captions[] =& new $this->feed->caption_class($caption_type, $caption_lang, $caption_startTime, $caption_endTime, $caption_text);
 							}
 							if (is_array($captions))
 							{
@@ -5145,7 +5150,7 @@ class SimplePie_Item
 								{
 									$label = $this->sanitize($category['attribs']['']['label'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$categories[] = new $this->feed->category_class($term, $scheme, $label);
+								$categories[] =& new $this->feed->category_class($term, $scheme, $label);
 							}
 						}
 						if (is_array($categories) && is_array($categories_parent))
@@ -5178,7 +5183,7 @@ class SimplePie_Item
 							{
 								$copyright_label = $this->sanitize($content['child'][SIMPLEPIE_NAMESPACE_MEDIARSS]['copyright'][0]['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 							}
-							$copyrights = new $this->feed->copyright_class($copyright_url, $copyright_label);
+							$copyrights =& new $this->feed->copyright_class($copyright_url, $copyright_label);
 						}
 						else
 						{
@@ -5209,7 +5214,7 @@ class SimplePie_Item
 								{
 									$credit_name = $this->sanitize($credit['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$credits[] = new $this->feed->credit_class($credit_role, $credit_scheme, $credit_name);
+								$credits[] =& new $this->feed->credit_class($credit_role, $credit_scheme, $credit_name);
 							}
 							if (is_array($credits))
 							{
@@ -5313,7 +5318,7 @@ class SimplePie_Item
 								{
 									$rating_value = $this->sanitize($rating['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$ratings[] = new $this->feed->rating_class($rating_scheme, $rating_value);
+								$ratings[] =& new $this->feed->rating_class($rating_scheme, $rating_value);
 							}
 							if (is_array($ratings))
 							{
@@ -5345,7 +5350,7 @@ class SimplePie_Item
 								{
 									$restriction_value = $this->sanitize($restriction['data'], SIMPLEPIE_CONSTRUCT_TEXT);
 								}
-								$restrictions[] = new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
+								$restrictions[] =& new $this->feed->restriction_class($restriction_relationship, $restriction_type, $restriction_value);
 							}
 							if (is_array($restrictions))
 							{
@@ -5384,7 +5389,7 @@ class SimplePie_Item
 							$title = $title_parent;
 						}
 
-						$this->data['enclosures'][] = new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions, $categories, $channels, $copyrights, $credits, $description, $duration, $expression, $framerate, $hashes, $height, $keywords, $lang, $medium, $player, $ratings, $restrictions, $samplingrate, $thumbnails, $title, $width);
+						$this->data['enclosures'][] =& new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions, $categories, $channels, $copyrights, $credits, $description, $duration, $expression, $framerate, $hashes, $height, $keywords, $lang, $medium, $player, $ratings, $restrictions, $samplingrate, $thumbnails, $title, $width);
 					}
 				}
 			}
@@ -5420,7 +5425,7 @@ class SimplePie_Item
 					}
 
 					// Since we don't have group or content for these, we'll just pass the '*_parent' variables directly to the constructor
-					$this->data['enclosures'][] = new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions_parent, $categories_parent, $channels, $copyrights_parent, $credits_parent, $description_parent, $duration_parent, $expression, $framerate, $hashes_parent, $height, $keywords_parent, $lang, $medium, $player_parent, $ratings_parent, $restrictions_parent, $samplingrate, $thumbnails_parent, $title_parent, $width);
+					$this->data['enclosures'][] =& new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions_parent, $categories_parent, $channels, $copyrights_parent, $credits_parent, $description_parent, $duration_parent, $expression, $framerate, $hashes_parent, $height, $keywords_parent, $lang, $medium, $player_parent, $ratings_parent, $restrictions_parent, $samplingrate, $thumbnails_parent, $title_parent, $width);
 				}
 			}
 
@@ -5455,7 +5460,7 @@ class SimplePie_Item
 					}
 
 					// Since we don't have group or content for these, we'll just pass the '*_parent' variables directly to the constructor
-					$this->data['enclosures'][] = new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions_parent, $categories_parent, $channels, $copyrights_parent, $credits_parent, $description_parent, $duration_parent, $expression, $framerate, $hashes_parent, $height, $keywords_parent, $lang, $medium, $player_parent, $ratings_parent, $restrictions_parent, $samplingrate, $thumbnails_parent, $title_parent, $width);
+					$this->data['enclosures'][] =& new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions_parent, $categories_parent, $channels, $copyrights_parent, $credits_parent, $description_parent, $duration_parent, $expression, $framerate, $hashes_parent, $height, $keywords_parent, $lang, $medium, $player_parent, $ratings_parent, $restrictions_parent, $samplingrate, $thumbnails_parent, $title_parent, $width);
 				}
 			}
 
@@ -5490,14 +5495,14 @@ class SimplePie_Item
 					}
 
 					// Since we don't have group or content for these, we'll just pass the '*_parent' variables directly to the constructor
-					$this->data['enclosures'][] = new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions_parent, $categories_parent, $channels, $copyrights_parent, $credits_parent, $description_parent, $duration_parent, $expression, $framerate, $hashes_parent, $height, $keywords_parent, $lang, $medium, $player_parent, $ratings_parent, $restrictions_parent, $samplingrate, $thumbnails_parent, $title_parent, $width);
+					$this->data['enclosures'][] =& new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions_parent, $categories_parent, $channels, $copyrights_parent, $credits_parent, $description_parent, $duration_parent, $expression, $framerate, $hashes_parent, $height, $keywords_parent, $lang, $medium, $player_parent, $ratings_parent, $restrictions_parent, $samplingrate, $thumbnails_parent, $title_parent, $width);
 				}
 			}
 
 			if (sizeof($this->data['enclosures']) == 0 && ($url || $type || $length || $bitrate || $captions_parent || $categories_parent || $channels || $copyrights_parent || $credits_parent || $description_parent || $duration_parent || $expression || $framerate || $hashes_parent || $height || $keywords_parent || $lang || $medium || $player_parent || $ratings_parent || $restrictions_parent || $samplingrate || $thumbnails_parent || $title_parent || $width))
 			{
 				// Since we don't have group or content for these, we'll just pass the '*_parent' variables directly to the constructor
-				$this->data['enclosures'][] = new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions_parent, $categories_parent, $channels, $copyrights_parent, $credits_parent, $description_parent, $duration_parent, $expression, $framerate, $hashes_parent, $height, $keywords_parent, $lang, $medium, $player_parent, $ratings_parent, $restrictions_parent, $samplingrate, $thumbnails_parent, $title_parent, $width);
+				$this->data['enclosures'][] =& new $this->feed->enclosure_class($url, $type, $length, $this->feed->javascript, $bitrate, $captions_parent, $categories_parent, $channels, $copyrights_parent, $credits_parent, $description_parent, $duration_parent, $expression, $framerate, $hashes_parent, $height, $keywords_parent, $lang, $medium, $player_parent, $ratings_parent, $restrictions_parent, $samplingrate, $thumbnails_parent, $title_parent, $width);
 			}
 
 			$this->data['enclosures'] = array_values(SimplePie_Misc::array_unique($this->data['enclosures']));
@@ -5782,19 +5787,19 @@ class SimplePie_Source
 			{
 				$label = $this->sanitize($category['attribs']['']['label'], SIMPLEPIE_CONSTRUCT_TEXT);
 			}
-			$categories[] = new $this->item->feed->category_class($term, $scheme, $label);
+			$categories[] =& new $this->item->feed->category_class($term, $scheme, $label);
 		}
 		foreach ((array) $this->get_source_tags('', 'category') as $category)
 		{
-			$categories[] = new $this->item->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$categories[] =& new $this->item->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_source_tags(SIMPLEPIE_NAMESPACE_DC_11, 'subject') as $category)
 		{
-			$categories[] = new $this->item->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$categories[] =& new $this->item->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_source_tags(SIMPLEPIE_NAMESPACE_DC_10, 'subject') as $category)
 		{
-			$categories[] = new $this->item->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$categories[] =& new $this->item->feed->category_class($this->sanitize($category['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 
 		if (!empty($categories))
@@ -5842,7 +5847,7 @@ class SimplePie_Source
 			}
 			if ($name !== null || $email !== null || $uri !== null)
 			{
-				$authors[] = new $this->item->feed->author_class($name, $uri, $email);
+				$authors[] =& new $this->item->feed->author_class($name, $uri, $email);
 			}
 		}
 		if ($author = $this->get_source_tags(SIMPLEPIE_NAMESPACE_ATOM_03, 'author'))
@@ -5864,20 +5869,20 @@ class SimplePie_Source
 			}
 			if ($name !== null || $email !== null || $url !== null)
 			{
-				$authors[] = new $this->item->feed->author_class($name, $url, $email);
+				$authors[] =& new $this->item->feed->author_class($name, $url, $email);
 			}
 		}
 		foreach ((array) $this->get_source_tags(SIMPLEPIE_NAMESPACE_DC_11, 'creator') as $author)
 		{
-			$authors[] = new $this->item->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$authors[] =& new $this->item->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_source_tags(SIMPLEPIE_NAMESPACE_DC_10, 'creator') as $author)
 		{
-			$authors[] = new $this->item->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$authors[] =& new $this->item->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 		foreach ((array) $this->get_source_tags(SIMPLEPIE_NAMESPACE_ITUNES, 'author') as $author)
 		{
-			$authors[] = new $this->item->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
+			$authors[] =& new $this->item->feed->author_class($this->sanitize($author['data'], SIMPLEPIE_CONSTRUCT_TEXT), null, null);
 		}
 
 		if (!empty($authors))
@@ -5925,7 +5930,7 @@ class SimplePie_Source
 			}
 			if ($name !== null || $email !== null || $uri !== null)
 			{
-				$contributors[] = new $this->item->feed->author_class($name, $uri, $email);
+				$contributors[] =& new $this->item->feed->author_class($name, $uri, $email);
 			}
 		}
 		foreach ((array) $this->get_source_tags(SIMPLEPIE_NAMESPACE_ATOM_03, 'contributor') as $contributor)
@@ -5947,7 +5952,7 @@ class SimplePie_Source
 			}
 			if ($name !== null || $email !== null || $url !== null)
 			{
-				$contributors[] = new $this->item->feed->author_class($name, $url, $email);
+				$contributors[] =& new $this->item->feed->author_class($name, $url, $email);
 			}
 		}
 
@@ -6384,7 +6389,7 @@ class SimplePie_Enclosure
 		$this->width = $width;
 		if (class_exists('idna_convert'))
 		{
-			$idn = new idna_convert;
+			$idn =& new idna_convert;
 			$parsed = SimplePie_Misc::parse_url($link);
 			$this->link = SimplePie_Misc::compress_parse_url($parsed['scheme'], $idn->encode($parsed['authority']), $parsed['path'], $parsed['query'], $parsed['fragment']);
 		}
@@ -7104,7 +7109,7 @@ class SimplePie_Enclosure
 
 		// Mime-types by handler.
 		$types_flash = array('application/x-shockwave-flash', 'application/futuresplash'); // Flash
-		$types_fmedia = array('video/flv', 'video/x-flv'); // Flash Media Player
+		$types_fmedia = array('video/flv', 'video/x-flv','flv-application/octet-stream'); // Flash Media Player
 		$types_quicktime = array('audio/3gpp', 'audio/3gpp2', 'audio/aac', 'audio/x-aac', 'audio/aiff', 'audio/x-aiff', 'audio/mid', 'audio/midi', 'audio/x-midi', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/wav', 'audio/x-wav', 'video/3gpp', 'video/3gpp2', 'video/m4v', 'video/x-m4v', 'video/mp4', 'video/mpeg', 'video/x-mpeg', 'video/quicktime', 'video/sd-video'); // QuickTime
 		$types_wmedia = array('application/asx', 'application/x-mplayer2', 'audio/x-ms-wma', 'audio/x-ms-wax', 'video/x-ms-asf-plugin', 'video/x-ms-asf', 'video/x-ms-wm', 'video/x-ms-wmv', 'video/x-ms-wvx'); // Windows Media
 		$types_mp3 = array('audio/mp3', 'audio/x-mp3', 'audio/mpeg', 'audio/x-mpeg'); // MP3
@@ -7580,7 +7585,7 @@ class SimplePie_File
 	{
 		if (class_exists('idna_convert'))
 		{
-			$idn = new idna_convert;
+			$idn =& new idna_convert;
 			$parsed = SimplePie_Misc::parse_url($url);
 			$url = SimplePie_Misc::compress_parse_url($parsed['scheme'], $idn->encode($parsed['authority']), $parsed['path'], $parsed['query'], $parsed['fragment']);
 		}
@@ -7641,7 +7646,7 @@ class SimplePie_File
 					curl_close($fp);
 					$this->headers = explode("\r\n\r\n", $this->headers, $info['redirect_count'] + 1);
 					$this->headers = array_pop($this->headers);
-					$parser = new SimplePie_HTTP_Parser($this->headers);
+					$parser =& new SimplePie_HTTP_Parser($this->headers);
 					if ($parser->parse())
 					{
 						$this->headers = $parser->headers;
@@ -7696,9 +7701,9 @@ class SimplePie_File
 					$out = "GET $get HTTP/1.0\r\n";
 					$out .= "Host: $url_parts[host]\r\n";
 					$out .= "User-Agent: $useragent\r\n";
-					if (function_exists('gzinflate'))
+					if (extension_loaded('zlib'))
 					{
-						$out .= "Accept-Encoding: gzip,deflate\r\n";
+						$out .= "Accept-Encoding: x-gzip,gzip,deflate\r\n";
 					}
 
 					if (isset($url_parts['user']) && isset($url_parts['pass']))
@@ -7722,7 +7727,7 @@ class SimplePie_File
 					}
 					if (!$info['timed_out'])
 					{
-						$parser = new SimplePie_HTTP_Parser($this->headers);
+						$parser =& new SimplePie_HTTP_Parser($this->headers);
 						if ($parser->parse())
 						{
 							$this->headers = $parser->headers;
@@ -7734,13 +7739,41 @@ class SimplePie_File
 								$location = SimplePie_Misc::absolutize_url($this->headers['location'], $url);
 								return $this->SimplePie_File($location, $timeout, $redirects, $headers, $useragent, $force_fsockopen);
 							}
-							if (isset($this->headers['content-encoding']) && ($this->headers['content-encoding'] == 'gzip' || $this->headers['content-encoding'] == 'deflate'))
+							if (isset($this->headers['content-encoding']))
 							{
-								if (substr($this->body, 0, 8) == "\x1f\x8b\x08\x00\x00\x00\x00\x00")
+								// Hey, we act dumb elsewhere, so let's do that here too
+								switch (strtolower(trim($this->headers['content-encoding'], "\x09\x0A\x0D\x20")))
 								{
-									$this->body = substr($this->body, 10);
+									case 'gzip':
+									case 'x-gzip':
+										$decoder = new SimplePie_gzdecode($this->body);
+										if (!$decoder->parse())
+										{
+											$this->error = 'Unable to decode HTTP "gzip" stream';
+											$this->success = false;
+										}
+										else
+										{
+											$this->body = $decoder->data;
+										}
+										break;
+
+									case 'deflate':
+										if (($body = gzuncompress($this->body)) === false)
+										{
+											if (($body = gzinflate($this->body)) === false)
+											{
+												$this->error = 'Unable to decode HTTP "deflate" stream';
+												$this->success = false;
+											}
+										}
+										$this->body = $body;
+										break;
+
+									default:
+										$this->error = 'Unknown content coding';
+										$this->success = false;
 								}
-								$this->body = gzinflate($this->body);
 							}
 						}
 					}
@@ -8192,6 +8225,316 @@ class SimplePie_HTTP_Parser
 	{
 		$this->body = substr($this->data, $this->position);
 		$this->state = 'emit';
+	}
+}
+
+/**
+ * gzdecode
+ *
+ * @package SimplePie
+ */
+class SimplePie_gzdecode
+{
+	/**
+	 * Compressed data
+	 *
+	 * @access private
+	 * @see gzdecode::$data
+	 */
+	var $compressed_data;
+
+	/**
+	 * Size of compressed data
+	 *
+	 * @access private
+	 */
+	var $compressed_size;
+
+	/**
+	 * Minimum size of a valid gzip string
+	 *
+	 * @access private
+	 */
+	var $min_compressed_size = 18;
+
+	/**
+	 * Current position of pointer
+	 *
+	 * @access private
+	 */
+	var $position = 0;
+
+	/**
+	 * Flags (FLG)
+	 *
+	 * @access private
+	 */
+	var $flags;
+
+	/**
+	 * Uncompressed data
+	 *
+	 * @access public
+	 * @see gzdecode::$compressed_data
+	 */
+	var $data;
+
+	/**
+	 * Modified time
+	 *
+	 * @access public
+	 */
+	var $MTIME;
+
+	/**
+	 * Extra Flags
+	 *
+	 * @access public
+	 */
+	var $XFL;
+
+	/**
+	 * Operating System
+	 *
+	 * @access public
+	 */
+	var $OS;
+
+	/**
+	 * Subfield ID 1
+	 *
+	 * @access public
+	 * @see gzdecode::$extra_field
+	 * @see gzdecode::$SI2
+	 */
+	var $SI1;
+
+	/**
+	 * Subfield ID 2
+	 *
+	 * @access public
+	 * @see gzdecode::$extra_field
+	 * @see gzdecode::$SI1
+	 */
+	var $SI2;
+
+	/**
+	 * Extra field content
+	 *
+	 * @access public
+	 * @see gzdecode::$SI1
+	 * @see gzdecode::$SI2
+	 */
+	var $extra_field;
+
+	/**
+	 * Original filename
+	 *
+	 * @access public
+	 */
+	var $filename;
+
+	/**
+	 * Human readable comment
+	 *
+	 * @access public
+	 */
+	var $comment;
+
+	/**
+	 * Don't allow anything to be set
+	 *
+	 * @access public
+	 */
+	function __set($name, $value)
+	{
+		trigger_error("Cannot write property $name", E_USER_ERROR);
+	}
+
+	/**
+	 * Set the compressed string and related properties
+	 *
+	 * @access public
+	 */
+	function SimplePie_gzdecode($data)
+	{
+		$this->compressed_data = $data;
+		$this->compressed_size = strlen($data);
+	}
+
+	/**
+	 * Decode the GZIP stream
+	 *
+	 * @access public
+	 */
+	function parse()
+	{
+		if ($this->compressed_size >= $this->min_compressed_size)
+		{
+			// Check ID1, ID2, and CM
+			if (substr($this->compressed_data, 0, 3) !== "\x1F\x8B\x08")
+			{
+				return false;
+			}
+
+			// Get the FLG (FLaGs)
+			$this->flags = ord($this->compressed_data[3]);
+
+			// FLG bits above (1 << 4) are reserved
+			if ($this->flags > 0x1F)
+			{
+				return false;
+			}
+
+			// Advance the pointer after the above
+			$this->position += 4;
+
+			// MTIME
+			$mtime = substr($this->compressed_data, $this->position, 4);
+			// Reverse the string if we're on a big-endian arch because l is the only signed long and is machine endianness
+			if (current(unpack('S', "\x00\x01")) === 1)
+			{
+				$mtime = strrev($mtime);
+			}
+			$this->MTIME = current(unpack('l', $mtime));
+			$this->position += 4;
+
+			// Get the XFL (eXtra FLags)
+			$this->XFL = ord($this->compressed_data[$this->position++]);
+
+			// Get the OS (Operating System)
+			$this->OS = ord($this->compressed_data[$this->position++]);
+
+			// Parse the FEXTRA
+			if ($this->flags & 4)
+			{
+				// Read subfield IDs
+				$this->SI1 = $this->compressed_data[$this->position++];
+				$this->SI2 = $this->compressed_data[$this->position++];
+
+				// SI2 set to zero is reserved for future use
+				if ($this->SI2 === "\x00")
+				{
+					return false;
+				}
+
+				// Get the length of the extra field
+				$len = current(unpack('v', substr($this->compressed_data, $this->position, 2)));
+				$position += 2;
+
+				// Check the length of the string is still valid
+				$this->min_compressed_size += $len + 4;
+				if ($this->compressed_size >= $this->min_compressed_size)
+				{
+					// Set the extra field to the given data
+					$this->extra_field = substr($this->compressed_data, $this->position, $len);
+					$this->position += $len;
+				}
+				else
+				{
+					return false;
+				}
+			}
+
+			// Parse the FNAME
+			if ($this->flags & 8)
+			{
+				// Get the length of the filename
+				$len = strspn($this->compressed_data, "\x00", $this->position);
+
+				// Check the length of the string is still valid
+				$this->min_compressed_size += $len + 1;
+				if ($this->compressed_size >= $this->min_compressed_size)
+				{
+					// Set the original filename to the given string
+					$this->filename = substr($this->compressed_data, $this->position, $len);
+					$this->position += $len + 1;
+				}
+				else
+				{
+					return false;
+				}
+			}
+
+			// Parse the FCOMMENT
+			if ($this->flags & 16)
+			{
+				// Get the length of the comment
+				$len = strspn($this->compressed_data, "\x00", $this->position);
+
+				// Check the length of the string is still valid
+				$this->min_compressed_size += $len + 1;
+				if ($this->compressed_size >= $this->min_compressed_size)
+				{
+					// Set the original comment to the given string
+					$this->comment = substr($this->compressed_data, $this->position, $len);
+					$this->position += $len + 1;
+				}
+				else
+				{
+					return false;
+				}
+			}
+
+			// Parse the FHCRC
+			if ($this->flags & 2)
+			{
+				// Check the length of the string is still valid
+				$this->min_compressed_size += $len + 2;
+				if ($this->compressed_size >= $this->min_compressed_size)
+				{
+					// Read the CRC
+					$crc = current(unpack('v', substr($this->compressed_data, $this->position, 2)));
+
+					// Check the CRC matches
+					if ((crc32(substr($this->compressed_data, 0, $this->position)) & 0xFFFF) === $crc)
+					{
+						$this->position += 2;
+					}
+					else
+					{
+						return false;
+					}
+				}
+				else
+				{
+					return false;
+				}
+			}
+
+			// Decompress the actual data
+			if (($this->data = gzinflate(substr($this->compressed_data, $this->position, -8))) === false)
+			{
+				return false;
+			}
+			else
+			{
+				$this->position = $this->compressed_size - 8;
+			}
+
+			// Check CRC of data
+			$crc = current(unpack('V', substr($this->compressed_data, $this->position, 4)));
+			$this->position += 4;
+			/*if (extension_loaded('hash') && sprintf('%u', current(unpack('V', hash('crc32b', $this->data)))) !== sprintf('%u', $crc))
+			{
+				return false;
+			}*/
+
+			// Check ISIZE of data
+			$isize = current(unpack('V', substr($this->compressed_data, $this->position, 4)));
+			$this->position += 4;
+			if (sprintf('%u', strlen($this->data) & 0xFFFFFFFF) !== sprintf('%u', $isize))
+			{
+				return false;
+			}
+
+			// Wow, against all odds, we've actually got a valid gzip string
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
 }
 
@@ -8751,1362 +9094,1368 @@ class SimplePie_Misc
 			$data = substr($data, 0, strcspn($data, $non_ascii_octects));
 		}
 
-		if (function_exists('iconv') && ($return = @iconv($input, $output, $data)))
+		// This is first, as behaviour of this is completely predictable
+		if ($input === 'Windows-1252' && $output === 'UTF-8')
 		{
-			return $return;
+			return SimplePie_Misc::windows_1252_to_utf8($data);
 		}
+		// This is second, as behaviour of this varies only with PHP version
 		elseif (function_exists('mb_convert_encoding') && ($return = @mb_convert_encoding($data, $output, $input)))
 		{
 			return $return;
 		}
-		elseif ($input == 'windows-1252' && $output == 'UTF-8')
+		// This is last, as behaviour of this varies with OS userland and PHP version
+		elseif (function_exists('iconv') && ($return = @iconv($input, $output, $data)))
 		{
-			return SimplePie_Misc::windows_1252_to_utf8($data);
+			return $return;
 		}
-		elseif ($input == 'UTF-8' && $output == 'windows-1252')
+		// If we can't do anything, just fail
+		else
 		{
-			return utf8_decode($data);
+			return false;
 		}
-		return $data;
 	}
 
-	function encoding($encoding)
+	function encoding($charset)
 	{
-		// Character sets are case-insensitive (though we'll return them in the form given in their registration)
-		switch (strtoupper($encoding))
+		/* Character sets are case-insensitive, and also need some further
+		normalization in the real world (though we'll return them in the form given
+		in their registration). */
+		switch (strtolower(preg_replace('/[\x09-\x0D\x20-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E]/', '', $charset)))
 		{
-			case 'ANSI_X3.110-1983':
-			case 'CSA_T500-1983':
-			case 'CSISO99NAPLPS':
-			case 'ISO-IR-99':
-			case 'NAPLPS':
-				return 'ANSI_X3.110-1983';
-
-			case 'ARABIC7':
-			case 'ASMO_449':
-			case 'CSISO89ASMO449':
-			case 'ISO-IR-89':
-			case 'ISO_9036':
-				return 'ASMO_449';
-
-			case 'ADOBE-STANDARD-ENCODING':
-			case 'CSADOBESTANDARDENCODING':
+			case 'adobestandardencoding':
+			case 'csadobestandardencoding':
 				return 'Adobe-Standard-Encoding';
 
-			case 'ADOBE-SYMBOL-ENCODING':
-			case 'CSHPPSMATH':
+			case 'adobesymbolencoding':
+			case 'cshppsmath':
 				return 'Adobe-Symbol-Encoding';
 
-			case 'AMI-1251':
-			case 'AMI1251':
-			case 'AMIGA-1251':
-			case 'AMIGA1251':
+			case 'ami1251':
+			case 'ami1251':
+			case 'amiga1251':
+			case 'amiga1251':
 				return 'Amiga-1251';
 
-			case 'BOCU-1':
-			case 'CSBOCU-1':
-				return 'BOCU-1';
+			case 'ansix31101983':
+			case 'csat5001983':
+			case 'csiso99naplps':
+			case 'isoir99':
+			case 'naplps':
+				return 'ANSI_X3.110-1983';
 
-			case 'BRF':
-			case 'CSBRF':
-				return 'BRF';
+			case 'arabic7':
+			case 'asmo449':
+			case 'csiso89asmo449':
+			case 'isoir89':
+			case 'iso9036':
+				return 'ASMO_449';
 
-			case 'BS_4730':
-			case 'CSISO4UNITEDKINGDOM':
-			case 'GB':
-			case 'ISO-IR-4':
-			case 'ISO646-GB':
-			case 'UK':
-				return 'BS_4730';
-
-			case 'BS_VIEWDATA':
-			case 'CSISO47BSVIEWDATA':
-			case 'ISO-IR-47':
-				return 'BS_viewdata';
-
-			case 'BIG5':
-			case 'CSBIG5':
+			case 'big5':
+			case 'csbig5':
+			case 'xxbig5':
 				return 'Big5';
 
-			case 'BIG5-HKSCS':
+			case 'big5hkscs':
 				return 'Big5-HKSCS';
 
-			case 'CESU-8':
-			case 'CSCESU-8':
+			case 'bocu1':
+			case 'csbocu1':
+				return 'BOCU-1';
+
+			case 'brf':
+			case 'csbrf':
+				return 'BRF';
+
+			case 'bs4730':
+			case 'csiso4unitedkingdom':
+			case 'gb':
+			case 'isoir4':
+			case 'iso646gb':
+			case 'uk':
+				return 'BS_4730';
+
+			case 'bsviewdata':
+			case 'csiso47bsviewdata':
+			case 'isoir47':
+				return 'BS_viewdata';
+
+			case 'cesu8':
+			case 'cscesu8':
 				return 'CESU-8';
 
-			case 'CA':
-			case 'CSA7-1':
-			case 'CSA_Z243.4-1985-1':
-			case 'CSISO121CANADIAN1':
-			case 'ISO-IR-121':
-			case 'ISO646-CA':
+			case 'ca':
+			case 'csa71':
+			case 'csaz243419851':
+			case 'csiso121canadian1':
+			case 'isoir121':
+			case 'iso646ca':
 				return 'CSA_Z243.4-1985-1';
 
-			case 'CSA7-2':
-			case 'CSA_Z243.4-1985-2':
-			case 'CSISO122CANADIAN2':
-			case 'ISO-IR-122':
-			case 'ISO646-CA2':
+			case 'csa72':
+			case 'csaz243419852':
+			case 'csiso122canadian2':
+			case 'isoir122':
+			case 'iso646ca2':
 				return 'CSA_Z243.4-1985-2';
 
-			case 'CSA_Z243.4-1985-GR':
-			case 'CSISO123CSAZ24341985GR':
-			case 'ISO-IR-123':
+			case 'csaz24341985gr':
+			case 'csiso123csaz24341985gr':
+			case 'isoir123':
 				return 'CSA_Z243.4-1985-gr';
 
-			case 'CSISO139CSN369103':
-			case 'CSN_369103':
-			case 'ISO-IR-139':
+			case 'csiso139csn369103':
+			case 'csn369103':
+			case 'isoir139':
 				return 'CSN_369103';
 
-			case 'CSDECMCS':
-			case 'DEC':
-			case 'DEC-MCS':
+			case 'csdecmcs':
+			case 'dec':
+			case 'decmcs':
 				return 'DEC-MCS';
 
-			case 'CSISO21GERMAN':
-			case 'DE':
-			case 'DIN_66003':
-			case 'ISO-IR-21':
-			case 'ISO646-DE':
+			case 'csiso21german':
+			case 'de':
+			case 'din66003':
+			case 'isoir21':
+			case 'iso646de':
 				return 'DIN_66003';
 
-			case 'CSISO646DANISH':
-			case 'DK':
-			case 'DS2089':
-			case 'DS_2089':
-			case 'ISO646-DK':
+			case 'csdkus':
+			case 'dkus':
+				return 'dk-us';
+
+			case 'csiso646danish':
+			case 'dk':
+			case 'ds2089':
+			case 'ds2089':
+			case 'iso646dk':
 				return 'DS_2089';
 
-			case 'CSIBMEBCDICATDE':
-			case 'EBCDIC-AT-DE':
+			case 'csibmebcdicatde':
+			case 'ebcdicatde':
 				return 'EBCDIC-AT-DE';
 
-			case 'CSEBCDICATDEA':
-			case 'EBCDIC-AT-DE-A':
+			case 'csebcdicatdea':
+			case 'ebcdicatdea':
 				return 'EBCDIC-AT-DE-A';
 
-			case 'CSEBCDICCAFR':
-			case 'EBCDIC-CA-FR':
+			case 'csebcdiccafr':
+			case 'ebcdiccafr':
 				return 'EBCDIC-CA-FR';
 
-			case 'CSEBCDICDKNO':
-			case 'EBCDIC-DK-NO':
+			case 'csebcdicdkno':
+			case 'ebcdicdkno':
 				return 'EBCDIC-DK-NO';
 
-			case 'CSEBCDICDKNOA':
-			case 'EBCDIC-DK-NO-A':
+			case 'csebcdicdknoa':
+			case 'ebcdicdknoa':
 				return 'EBCDIC-DK-NO-A';
 
-			case 'CSEBCDICES':
-			case 'EBCDIC-ES':
+			case 'csebcdices':
+			case 'ebcdices':
 				return 'EBCDIC-ES';
 
-			case 'CSEBCDICESA':
-			case 'EBCDIC-ES-A':
+			case 'csebcdicesa':
+			case 'ebcdicesa':
 				return 'EBCDIC-ES-A';
 
-			case 'CSEBCDICESS':
-			case 'EBCDIC-ES-S':
+			case 'csebcdicess':
+			case 'ebcdicess':
 				return 'EBCDIC-ES-S';
 
-			case 'CSEBCDICFISE':
-			case 'EBCDIC-FI-SE':
+			case 'csebcdicfise':
+			case 'ebcdicfise':
 				return 'EBCDIC-FI-SE';
 
-			case 'CSEBCDICFISEA':
-			case 'EBCDIC-FI-SE-A':
+			case 'csebcdicfisea':
+			case 'ebcdicfisea':
 				return 'EBCDIC-FI-SE-A';
 
-			case 'CSEBCDICFR':
-			case 'EBCDIC-FR':
+			case 'csebcdicfr':
+			case 'ebcdicfr':
 				return 'EBCDIC-FR';
 
-			case 'CSEBCDICIT':
-			case 'EBCDIC-IT':
+			case 'csebcdicit':
+			case 'ebcdicit':
 				return 'EBCDIC-IT';
 
-			case 'CSEBCDICPT':
-			case 'EBCDIC-PT':
+			case 'csebcdicpt':
+			case 'ebcdicpt':
 				return 'EBCDIC-PT';
 
-			case 'CSEBCDICUK':
-			case 'EBCDIC-UK':
+			case 'csebcdicuk':
+			case 'ebcdicuk':
 				return 'EBCDIC-UK';
 
-			case 'CSEBCDICUS':
-			case 'EBCDIC-US':
+			case 'csebcdicus':
+			case 'ebcdicus':
 				return 'EBCDIC-US';
 
-			case 'CSISO111ECMACYRILLIC':
-			case 'ECMA-CYRILLIC':
-			case 'ISO-IR-111':
-			case 'KOI8-E':
+			case 'csiso111ecmacyrillic':
+			case 'ecmacyrillic':
+			case 'isoir111':
+			case 'koi8e':
 				return 'ECMA-cyrillic';
 
-			case 'CSISO17SPANISH':
-			case 'ES':
-			case 'ISO-IR-17':
-			case 'ISO646-ES':
+			case 'csiso17spanish':
+			case 'es':
+			case 'isoir17':
+			case 'iso646es':
 				return 'ES';
 
-			case 'CSISO85SPANISH2':
-			case 'ES2':
-			case 'ISO-IR-85':
-			case 'ISO646-ES2':
+			case 'csiso85spanish2':
+			case 'es2':
+			case 'isoir85':
+			case 'iso646es2':
 				return 'ES2';
 
-			case 'CSEUCPKDFMTJAPANESE':
-			case 'EUC-JP':
-			case 'EXTENDED_UNIX_CODE_PACKED_FORMAT_FOR_JAPANESE':
-				return 'EUC-JP';
-
-			case 'CSEUCKR':
-			case 'EUC-KR':
-				return 'EUC-KR';
-
-			case 'CSEUCFIXWIDJAPANESE':
-			case 'EXTENDED_UNIX_CODE_FIXED_WIDTH_FOR_JAPANESE':
+			case 'cseucfixwidjapanese':
+			case 'extendedunixcodefixedwidthforjapanese':
 				return 'Extended_UNIX_Code_Fixed_Width_for_Japanese';
 
-			case 'GB18030':
+			case 'cseucpkdfmtjapanese':
+			case 'eucjp':
+			case 'extendedunixcodepackedformatforjapanese':
+				return 'Extended_UNIX_Code_Packed_Format_for_Japanese';
+
+			case 'gb18030':
 				return 'GB18030';
 
-			case 'CSGB2312':
-			case 'GB2312':
-				return 'GB2312';
-
-			case 'CP936':
-			case 'GBK':
-			case 'MS936':
-			case 'WINDOWS-936':
+			case 'cp936':
+			case 'gbk':
+			case 'ms936':
+			case 'windows936':
+			case 'csgb2312':
+			case 'gb2312':
+			case 'chinese':
+			case 'csiso58gb231280':
+			case 'gb231280':
+			case 'isoir58':
 				return 'GBK';
 
-			case 'CN':
-			case 'CSISO57GB1988':
-			case 'GB_1988-80':
-			case 'ISO-IR-57':
-			case 'ISO646-CN':
+			case 'cn':
+			case 'csiso57gb1988':
+			case 'gb198880':
+			case 'isoir57':
+			case 'iso646cn':
 				return 'GB_1988-80';
 
-			case 'CHINESE':
-			case 'CSISO58GB231280':
-			case 'GB_2312-80':
-			case 'ISO-IR-58':
-				return 'GB_2312-80';
-
-			case 'CSISO153GOST1976874':
-			case 'GOST_19768-74':
-			case 'ISO-IR-153':
-			case 'ST_SEV_358-88':
+			case 'csiso153gost1976874':
+			case 'gost1976874':
+			case 'isoir153':
+			case 'stsev35888':
 				return 'GOST_19768-74';
 
-			case 'CSHPDESKTOP':
-			case 'HP-DESKTOP':
+			case 'csiso150':
+			case 'csiso150greekccitt':
+			case 'greekccitt':
+			case 'isoir150':
+				return 'greek-ccitt';
+
+			case 'csiso88greek7':
+			case 'greek7':
+			case 'isoir88':
+				return 'greek7';
+
+			case 'csiso18greek7old':
+			case 'greek7old':
+			case 'isoir18':
+				return 'greek7-old';
+
+			case 'cshpdesktop':
+			case 'hpdesktop':
 				return 'HP-DeskTop';
 
-			case 'CSHPLEGAL':
-			case 'HP-LEGAL':
+			case 'cshplegal':
+			case 'hplegal':
 				return 'HP-Legal';
 
-			case 'CSHPMATH8':
-			case 'HP-MATH8':
+			case 'cshpmath8':
+			case 'hpmath8':
 				return 'HP-Math8';
 
-			case 'CSHPPIFONT':
-			case 'HP-PI-FONT':
+			case 'cshppifont':
+			case 'hppifont':
 				return 'HP-Pi-font';
 
-			case 'HZ-GB-2312':
+			case 'cshproman8':
+			case 'hproman8':
+			case 'r8':
+			case 'roman8':
+				return 'hp-roman8';
+
+			case 'hzgb2312':
 				return 'HZ-GB-2312';
 
-			case 'CSIBMSYMBOLS':
-			case 'IBM-SYMBOLS':
+			case 'csibmsymbols':
+			case 'ibmsymbols':
 				return 'IBM-Symbols';
 
-			case 'CSIBMTHAI':
-			case 'IBM-THAI':
+			case 'csibmthai':
+			case 'ibmthai':
 				return 'IBM-Thai';
 
-			case 'CCSID00858':
-			case 'CP00858':
-			case 'IBM00858':
-			case 'PC-MULTILINGUAL-850+EURO':
+			case 'ccsid00858':
+			case 'cp00858':
+			case 'ibm00858':
+			case 'pcmultilingual850euro':
 				return 'IBM00858';
 
-			case 'CCSID00924':
-			case 'CP00924':
-			case 'EBCDIC-LATIN9--EURO':
-			case 'IBM00924':
+			case 'ccsid00924':
+			case 'cp00924':
+			case 'ebcdiclatin9euro':
+			case 'ibm00924':
 				return 'IBM00924';
 
-			case 'CCSID01140':
-			case 'CP01140':
-			case 'EBCDIC-US-37+EURO':
-			case 'IBM01140':
+			case 'ccsid01140':
+			case 'cp01140':
+			case 'ebcdicus37euro':
+			case 'ibm01140':
 				return 'IBM01140';
 
-			case 'CCSID01141':
-			case 'CP01141':
-			case 'EBCDIC-DE-273+EURO':
-			case 'IBM01141':
+			case 'ccsid01141':
+			case 'cp01141':
+			case 'ebcdicde273euro':
+			case 'ibm01141':
 				return 'IBM01141';
 
-			case 'CCSID01142':
-			case 'CP01142':
-			case 'EBCDIC-DK-277+EURO':
-			case 'EBCDIC-NO-277+EURO':
-			case 'IBM01142':
+			case 'ccsid01142':
+			case 'cp01142':
+			case 'ebcdicdk277euro':
+			case 'ebcdicno277euro':
+			case 'ibm01142':
 				return 'IBM01142';
 
-			case 'CCSID01143':
-			case 'CP01143':
-			case 'EBCDIC-FI-278+EURO':
-			case 'EBCDIC-SE-278+EURO':
-			case 'IBM01143':
+			case 'ccsid01143':
+			case 'cp01143':
+			case 'ebcdicfi278euro':
+			case 'ebcdicse278euro':
+			case 'ibm01143':
 				return 'IBM01143';
 
-			case 'CCSID01144':
-			case 'CP01144':
-			case 'EBCDIC-IT-280+EURO':
-			case 'IBM01144':
+			case 'ccsid01144':
+			case 'cp01144':
+			case 'ebcdicit280euro':
+			case 'ibm01144':
 				return 'IBM01144';
 
-			case 'CCSID01145':
-			case 'CP01145':
-			case 'EBCDIC-ES-284+EURO':
-			case 'IBM01145':
+			case 'ccsid01145':
+			case 'cp01145':
+			case 'ebcdices284euro':
+			case 'ibm01145':
 				return 'IBM01145';
 
-			case 'CCSID01146':
-			case 'CP01146':
-			case 'EBCDIC-GB-285+EURO':
-			case 'IBM01146':
+			case 'ccsid01146':
+			case 'cp01146':
+			case 'ebcdicgb285euro':
+			case 'ibm01146':
 				return 'IBM01146';
 
-			case 'CCSID01147':
-			case 'CP01147':
-			case 'EBCDIC-FR-297+EURO':
-			case 'IBM01147':
+			case 'ccsid01147':
+			case 'cp01147':
+			case 'ebcdicfr297euro':
+			case 'ibm01147':
 				return 'IBM01147';
 
-			case 'CCSID01148':
-			case 'CP01148':
-			case 'EBCDIC-INTERNATIONAL-500+EURO':
-			case 'IBM01148':
+			case 'ccsid01148':
+			case 'cp01148':
+			case 'ebcdicinternational500euro':
+			case 'ibm01148':
 				return 'IBM01148';
 
-			case 'CCSID01149':
-			case 'CP01149':
-			case 'EBCDIC-IS-871+EURO':
-			case 'IBM01149':
+			case 'ccsid01149':
+			case 'cp01149':
+			case 'ebcdicis871euro':
+			case 'ibm01149':
 				return 'IBM01149';
 
-			case 'CP037':
-			case 'CSIBM037':
-			case 'EBCDIC-CP-CA':
-			case 'EBCDIC-CP-NL':
-			case 'EBCDIC-CP-US':
-			case 'EBCDIC-CP-WT':
-			case 'IBM037':
+			case 'cp037':
+			case 'csibm037':
+			case 'ebcdiccpca':
+			case 'ebcdiccpnl':
+			case 'ebcdiccpus':
+			case 'ebcdiccpwt':
+			case 'ibm037':
 				return 'IBM037';
 
-			case 'CP038':
-			case 'CSIBM038':
-			case 'EBCDIC-INT':
-			case 'IBM038':
+			case 'cp038':
+			case 'csibm038':
+			case 'ebcdicint':
+			case 'ibm038':
 				return 'IBM038';
 
-			case 'CP1026':
-			case 'CSIBM1026':
-			case 'IBM1026':
-				return 'IBM1026';
-
-			case 'IBM-1047':
-			case 'IBM1047':
-				return 'IBM1047';
-
-			case 'CP273':
-			case 'CSIBM273':
-			case 'IBM273':
+			case 'cp273':
+			case 'csibm273':
+			case 'ibm273':
 				return 'IBM273';
 
-			case 'CP274':
-			case 'CSIBM274':
-			case 'EBCDIC-BE':
-			case 'IBM274':
+			case 'cp274':
+			case 'csibm274':
+			case 'ebcdicbe':
+			case 'ibm274':
 				return 'IBM274';
 
-			case 'CP275':
-			case 'CSIBM275':
-			case 'EBCDIC-BR':
-			case 'IBM275':
+			case 'cp275':
+			case 'csibm275':
+			case 'ebcdicbr':
+			case 'ibm275':
 				return 'IBM275';
 
-			case 'CSIBM277':
-			case 'EBCDIC-CP-DK':
-			case 'EBCDIC-CP-NO':
-			case 'IBM277':
+			case 'csibm277':
+			case 'ebcdiccpdk':
+			case 'ebcdiccpno':
+			case 'ibm277':
 				return 'IBM277';
 
-			case 'CP278':
-			case 'CSIBM278':
-			case 'EBCDIC-CP-FI':
-			case 'EBCDIC-CP-SE':
-			case 'IBM278':
+			case 'cp278':
+			case 'csibm278':
+			case 'ebcdiccpfi':
+			case 'ebcdiccpse':
+			case 'ibm278':
 				return 'IBM278';
 
-			case 'CP280':
-			case 'CSIBM280':
-			case 'EBCDIC-CP-IT':
-			case 'IBM280':
+			case 'cp280':
+			case 'csibm280':
+			case 'ebcdiccpit':
+			case 'ibm280':
 				return 'IBM280';
 
-			case 'CP281':
-			case 'CSIBM281':
-			case 'EBCDIC-JP-E':
-			case 'IBM281':
+			case 'cp281':
+			case 'csibm281':
+			case 'ebcdicjpe':
+			case 'ibm281':
 				return 'IBM281';
 
-			case 'CP284':
-			case 'CSIBM284':
-			case 'EBCDIC-CP-ES':
-			case 'IBM284':
+			case 'cp284':
+			case 'csibm284':
+			case 'ebcdiccpes':
+			case 'ibm284':
 				return 'IBM284';
 
-			case 'CP285':
-			case 'CSIBM285':
-			case 'EBCDIC-CP-GB':
-			case 'IBM285':
+			case 'cp285':
+			case 'csibm285':
+			case 'ebcdiccpgb':
+			case 'ibm285':
 				return 'IBM285';
 
-			case 'CP290':
-			case 'CSIBM290':
-			case 'EBCDIC-JP-KANA':
-			case 'IBM290':
+			case 'cp290':
+			case 'csibm290':
+			case 'ebcdicjpkana':
+			case 'ibm290':
 				return 'IBM290';
 
-			case 'CP297':
-			case 'CSIBM297':
-			case 'EBCDIC-CP-FR':
-			case 'IBM297':
+			case 'cp297':
+			case 'csibm297':
+			case 'ebcdiccpfr':
+			case 'ibm297':
 				return 'IBM297';
 
-			case 'CP420':
-			case 'CSIBM420':
-			case 'EBCDIC-CP-AR1':
-			case 'IBM420':
+			case 'cp420':
+			case 'csibm420':
+			case 'ebcdiccpar1':
+			case 'ibm420':
 				return 'IBM420';
 
-			case 'CP423':
-			case 'CSIBM423':
-			case 'EBCDIC-CP-GR':
-			case 'IBM423':
+			case 'cp423':
+			case 'csibm423':
+			case 'ebcdiccpgr':
+			case 'ibm423':
 				return 'IBM423';
 
-			case 'CP424':
-			case 'CSIBM424':
-			case 'EBCDIC-CP-HE':
-			case 'IBM424':
+			case 'cp424':
+			case 'csibm424':
+			case 'ebcdiccphe':
+			case 'ibm424':
 				return 'IBM424';
 
 			case '437':
-			case 'CP437':
-			case 'CSPC8CODEPAGE437':
-			case 'IBM437':
+			case 'cp437':
+			case 'cspc8codepage437':
+			case 'ibm437':
 				return 'IBM437';
 
-			case 'CP500':
-			case 'CSIBM500':
-			case 'EBCDIC-CP-BE':
-			case 'EBCDIC-CP-CH':
-			case 'IBM500':
+			case 'cp500':
+			case 'csibm500':
+			case 'ebcdiccpbe':
+			case 'ebcdiccpch':
+			case 'ibm500':
 				return 'IBM500';
 
-			case 'CP775':
-			case 'CSPC775BALTIC':
-			case 'IBM775':
+			case 'cp775':
+			case 'cspc775baltic':
+			case 'ibm775':
 				return 'IBM775';
 
 			case '850':
-			case 'CP850':
-			case 'CSPC850MULTILINGUAL':
-			case 'IBM850':
+			case 'cp850':
+			case 'cspc850multilingual':
+			case 'ibm850':
 				return 'IBM850';
 
 			case '851':
-			case 'CP851':
-			case 'CSIBM851':
-			case 'IBM851':
+			case 'cp851':
+			case 'csibm851':
+			case 'ibm851':
 				return 'IBM851';
 
 			case '852':
-			case 'CP852':
-			case 'CSPCP852':
-			case 'IBM852':
+			case 'cp852':
+			case 'cspcp852':
+			case 'ibm852':
 				return 'IBM852';
 
 			case '855':
-			case 'CP855':
-			case 'CSIBM855':
-			case 'IBM855':
+			case 'cp855':
+			case 'csibm855':
+			case 'ibm855':
 				return 'IBM855';
 
 			case '857':
-			case 'CP857':
-			case 'CSIBM857':
-			case 'IBM857':
+			case 'cp857':
+			case 'csibm857':
+			case 'ibm857':
 				return 'IBM857';
 
 			case '860':
-			case 'CP860':
-			case 'CSIBM860':
-			case 'IBM860':
+			case 'cp860':
+			case 'csibm860':
+			case 'ibm860':
 				return 'IBM860';
 
 			case '861':
-			case 'CP-IS':
-			case 'CP861':
-			case 'CSIBM861':
-			case 'IBM861':
+			case 'cpis':
+			case 'cp861':
+			case 'csibm861':
+			case 'ibm861':
 				return 'IBM861';
 
 			case '862':
-			case 'CP862':
-			case 'CSPC862LATINHEBREW':
-			case 'IBM862':
+			case 'cp862':
+			case 'cspc862latinhebrew':
+			case 'ibm862':
 				return 'IBM862';
 
 			case '863':
-			case 'CP863':
-			case 'CSIBM863':
-			case 'IBM863':
+			case 'cp863':
+			case 'csibm863':
+			case 'ibm863':
 				return 'IBM863';
 
-			case 'CP864':
-			case 'CSIBM864':
-			case 'IBM864':
+			case 'cp864':
+			case 'csibm864':
+			case 'ibm864':
 				return 'IBM864';
 
 			case '865':
-			case 'CP865':
-			case 'CSIBM865':
-			case 'IBM865':
+			case 'cp865':
+			case 'csibm865':
+			case 'ibm865':
 				return 'IBM865';
 
 			case '866':
-			case 'CP866':
-			case 'CSIBM866':
-			case 'IBM866':
+			case 'cp866':
+			case 'csibm866':
+			case 'ibm866':
 				return 'IBM866';
 
-			case 'CP-AR':
-			case 'CP868':
-			case 'CSIBM868':
-			case 'IBM868':
+			case 'cpar':
+			case 'cp868':
+			case 'csibm868':
+			case 'ibm868':
 				return 'IBM868';
 
 			case '869':
-			case 'CP-GR':
-			case 'CP869':
-			case 'CSIBM869':
-			case 'IBM869':
+			case 'cpgr':
+			case 'cp869':
+			case 'csibm869':
+			case 'ibm869':
 				return 'IBM869';
 
-			case 'CP870':
-			case 'CSIBM870':
-			case 'EBCDIC-CP-ROECE':
-			case 'EBCDIC-CP-YU':
-			case 'IBM870':
+			case 'cp870':
+			case 'csibm870':
+			case 'ebcdiccproece':
+			case 'ebcdiccpyu':
+			case 'ibm870':
 				return 'IBM870';
 
-			case 'CP871':
-			case 'CSIBM871':
-			case 'EBCDIC-CP-IS':
-			case 'IBM871':
+			case 'cp871':
+			case 'csibm871':
+			case 'ebcdiccpis':
+			case 'ibm871':
 				return 'IBM871';
 
-			case 'CP880':
-			case 'CSIBM880':
-			case 'EBCDIC-CYRILLIC':
-			case 'IBM880':
+			case 'cp880':
+			case 'csibm880':
+			case 'ebcdiccyrillic':
+			case 'ibm880':
 				return 'IBM880';
 
-			case 'CP891':
-			case 'CSIBM891':
-			case 'IBM891':
+			case 'cp891':
+			case 'csibm891':
+			case 'ibm891':
 				return 'IBM891';
 
-			case 'CP903':
-			case 'CSIBM903':
-			case 'IBM903':
+			case 'cp903':
+			case 'csibm903':
+			case 'ibm903':
 				return 'IBM903';
 
 			case '904':
-			case 'CP904':
-			case 'CSIBBM904':
-			case 'IBM904':
+			case 'cp904':
+			case 'csibbm904':
+			case 'ibm904':
 				return 'IBM904';
 
-			case 'CP905':
-			case 'CSIBM905':
-			case 'EBCDIC-CP-TR':
-			case 'IBM905':
+			case 'cp905':
+			case 'csibm905':
+			case 'ebcdiccptr':
+			case 'ibm905':
 				return 'IBM905';
 
-			case 'CP918':
-			case 'CSIBM918':
-			case 'EBCDIC-CP-AR2':
-			case 'IBM918':
+			case 'cp918':
+			case 'csibm918':
+			case 'ebcdiccpar2':
+			case 'ibm918':
 				return 'IBM918';
 
-			case 'CSISO143IECP271':
-			case 'IEC_P27-1':
-			case 'ISO-IR-143':
+			case 'cp1026':
+			case 'csibm1026':
+			case 'ibm1026':
+				return 'IBM1026';
+
+			case 'ibm1047':
+			case 'ibm1047':
+				return 'IBM1047';
+
+			case 'csiso143iecp271':
+			case 'iecp271':
+			case 'isoir143':
 				return 'IEC_P27-1';
 
-			case 'CSISO49INIS':
-			case 'INIS':
-			case 'ISO-IR-49':
+			case 'csiso49inis':
+			case 'inis':
+			case 'isoir49':
 				return 'INIS';
 
-			case 'CSISO50INIS8':
-			case 'INIS-8':
-			case 'ISO-IR-50':
+			case 'csiso50inis8':
+			case 'inis8':
+			case 'isoir50':
 				return 'INIS-8';
 
-			case 'CSISO51INISCYRILLIC':
-			case 'INIS-CYRILLIC':
-			case 'ISO-IR-51':
+			case 'csiso51iniscyrillic':
+			case 'iniscyrillic':
+			case 'isoir51':
 				return 'INIS-cyrillic';
 
-			case 'CSINVARIANT':
-			case 'INVARIANT':
+			case 'csinvariant':
+			case 'invariant':
 				return 'INVARIANT';
 
-			case 'ISO-10646-J-1':
-				return 'ISO-10646-J-1';
-
-			case 'CSUNICODE':
-			case 'ISO-10646-UCS-2':
-				return 'ISO-10646-UCS-2';
-
-			case 'CSUCS4':
-			case 'ISO-10646-UCS-4':
-				return 'ISO-10646-UCS-4';
-
-			case 'CSUNICODEASCII':
-			case 'ISO-10646-UCS-BASIC':
-				return 'ISO-10646-UCS-Basic';
-
-			case 'CSISO10646UTF1':
-			case 'ISO-10646-UTF-1':
-				return 'ISO-10646-UTF-1';
-
-			case 'CSUNICODELATIN1':
-			case 'ISO-10646':
-			case 'ISO-10646-UNICODE-LATIN1':
-				return 'ISO-10646-Unicode-Latin1';
-
-			case 'CSISO115481':
-			case 'ISO-11548-1':
-			case 'ISO_11548-1':
-			case 'ISO_TR_11548-1':
-				return 'ISO-11548-1';
-
-			case 'ISO-2022-CN':
+			case 'iso2022cn':
 				return 'ISO-2022-CN';
 
-			case 'ISO-2022-CN-EXT':
+			case 'iso2022cnext':
 				return 'ISO-2022-CN-EXT';
 
-			case 'CSISO2022JP':
-			case 'ISO-2022-JP':
+			case 'csiso2022jp':
+			case 'iso2022jp':
 				return 'ISO-2022-JP';
 
-			case 'CSISO2022JP2':
-			case 'ISO-2022-JP-2':
+			case 'csiso2022jp2':
+			case 'iso2022jp2':
 				return 'ISO-2022-JP-2';
 
-			case 'CSISO2022KR':
-			case 'ISO-2022-KR':
+			case 'csiso2022kr':
+			case 'iso2022kr':
 				return 'ISO-2022-KR';
 
-			case 'CSWINDOWS30LATIN1':
-			case 'ISO-8859-1-WINDOWS-3.0-LATIN-1':
+			case 'cswindows30latin1':
+			case 'iso88591windows30latin1':
 				return 'ISO-8859-1-Windows-3.0-Latin-1';
 
-			case 'CSWINDOWS31LATIN1':
-			case 'ISO-8859-1-WINDOWS-3.1-LATIN-1':
+			case 'cswindows31latin1':
+			case 'iso88591windows31latin1':
 				return 'ISO-8859-1-Windows-3.1-Latin-1';
 
-			case 'CSISOLATIN6':
-			case 'ISO-8859-10':
-			case 'ISO-IR-157':
-			case 'ISO_8859-10:1992':
-			case 'L6':
-			case 'LATIN6':
-				return 'ISO-8859-10';
-
-			case 'ISO-8859-13':
-				return 'ISO-8859-13';
-
-			case 'ISO-8859-14':
-			case 'ISO-CELTIC':
-			case 'ISO-IR-199':
-			case 'ISO_8859-14':
-			case 'ISO_8859-14:1998':
-			case 'L8':
-			case 'LATIN8':
-				return 'ISO-8859-14';
-
-			case 'ISO-8859-15':
-			case 'ISO_8859-15':
-			case 'LATIN-9':
-				return 'ISO-8859-15';
-
-			case 'ISO-8859-16':
-			case 'ISO-IR-226':
-			case 'ISO_8859-16':
-			case 'ISO_8859-16:2001':
-			case 'L10':
-			case 'LATIN10':
-				return 'ISO-8859-16';
-
-			case 'CSISOLATIN2':
-			case 'ISO-8859-2':
-			case 'ISO-IR-101':
-			case 'ISO_8859-2':
-			case 'ISO_8859-2:1987':
-			case 'L2':
-			case 'LATIN2':
+			case 'csisolatin2':
+			case 'iso88592':
+			case 'isoir101':
+			case 'iso88592':
+			case 'iso885921987':
+			case 'l2':
+			case 'latin2':
 				return 'ISO-8859-2';
 
-			case 'CSWINDOWS31LATIN2':
-			case 'ISO-8859-2-WINDOWS-LATIN-2':
+			case 'cswindows31latin2':
+			case 'iso88592windowslatin2':
 				return 'ISO-8859-2-Windows-Latin-2';
 
-			case 'CSISOLATIN3':
-			case 'ISO-8859-3':
-			case 'ISO-IR-109':
-			case 'ISO_8859-3':
-			case 'ISO_8859-3:1988':
-			case 'L3':
-			case 'LATIN3':
+			case 'csisolatin3':
+			case 'iso88593':
+			case 'isoir109':
+			case 'iso88593':
+			case 'iso885931988':
+			case 'l3':
+			case 'latin3':
 				return 'ISO-8859-3';
 
-			case 'CSISOLATIN4':
-			case 'ISO-8859-4':
-			case 'ISO-IR-110':
-			case 'ISO_8859-4':
-			case 'ISO_8859-4:1988':
-			case 'L4':
-			case 'LATIN4':
+			case 'csisolatin4':
+			case 'iso88594':
+			case 'isoir110':
+			case 'iso88594':
+			case 'iso885941988':
+			case 'l4':
+			case 'latin4':
 				return 'ISO-8859-4';
 
-			case 'CSISOLATINCYRILLIC':
-			case 'CYRILLIC':
-			case 'ISO-8859-5':
-			case 'ISO-IR-144':
-			case 'ISO_8859-5':
-			case 'ISO_8859-5:1988':
+			case 'csisolatincyrillic':
+			case 'cyrillic':
+			case 'iso88595':
+			case 'isoir144':
+			case 'iso88595':
+			case 'iso885951988':
 				return 'ISO-8859-5';
 
-			case 'ARABIC':
-			case 'ASMO-708':
-			case 'CSISOLATINARABIC':
-			case 'ECMA-114':
-			case 'ISO-8859-6':
-			case 'ISO-IR-127':
-			case 'ISO_8859-6':
-			case 'ISO_8859-6:1987':
+			case 'arabic':
+			case 'asmo708':
+			case 'csisolatinarabic':
+			case 'ecma114':
+			case 'iso88596':
+			case 'isoir127':
+			case 'iso88596':
+			case 'iso885961987':
 				return 'ISO-8859-6';
 
-			case 'CSISO88596E':
-			case 'ISO-8859-6-E':
-			case 'ISO_8859-6-E':
+			case 'csiso88596e':
+			case 'iso88596e':
+			case 'iso88596e':
 				return 'ISO-8859-6-E';
 
-			case 'CSISO88596I':
-			case 'ISO-8859-6-I':
-			case 'ISO_8859-6-I':
+			case 'csiso88596i':
+			case 'iso88596i':
+			case 'iso88596i':
 				return 'ISO-8859-6-I';
 
-			case 'CSISOLATINGREEK':
-			case 'ECMA-118':
-			case 'ELOT_928':
-			case 'GREEK':
-			case 'GREEK8':
-			case 'ISO-8859-7':
-			case 'ISO-IR-126':
-			case 'ISO_8859-7':
-			case 'ISO_8859-7:1987':
+			case 'csisolatingreek':
+			case 'ecma118':
+			case 'elot928':
+			case 'greek':
+			case 'greek8':
+			case 'iso88597':
+			case 'isoir126':
+			case 'iso88597':
+			case 'iso885971987':
 				return 'ISO-8859-7';
 
-			case 'CSISOLATINHEBREW':
-			case 'HEBREW':
-			case 'ISO-8859-8':
-			case 'ISO-IR-138':
-			case 'ISO_8859-8':
-			case 'ISO_8859-8:1988':
+			case 'csisolatinhebrew':
+			case 'hebrew':
+			case 'iso88598':
+			case 'isoir138':
+			case 'iso88598':
+			case 'iso885981988':
 				return 'ISO-8859-8';
 
-			case 'CSISO88598E':
-			case 'ISO-8859-8-E':
-			case 'ISO_8859-8-E':
+			case 'csiso88598e':
+			case 'iso88598e':
+			case 'iso88598e':
 				return 'ISO-8859-8-E';
 
-			case 'CSISO88598I':
-			case 'ISO-8859-8-I':
-			case 'ISO_8859-8-I':
+			case 'csiso88598i':
+			case 'iso88598i':
+			case 'iso88598i':
 				return 'ISO-8859-8-I';
 
-			case 'CSISOLATIN5':
-			case 'ISO-8859-9':
-			case 'ISO-IR-148':
-			case 'ISO_8859-9':
-			case 'ISO_8859-9:1989':
-			case 'L5':
-			case 'LATIN5':
-				return 'ISO-8859-9';
-
-			case 'CSWINDOWS31LATIN5':
-			case 'ISO-8859-9-WINDOWS-LATIN-5':
+			case 'cswindows31latin5':
+			case 'iso88599windowslatin5':
 				return 'ISO-8859-9-Windows-Latin-5';
 
-			case 'CSUNICODEIBM1261':
-			case 'ISO-UNICODE-IBM-1261':
-				return 'ISO-Unicode-IBM-1261';
-
-			case 'CSUNICODEIBM1264':
-			case 'ISO-UNICODE-IBM-1264':
-				return 'ISO-Unicode-IBM-1264';
-
-			case 'CSUNICODEIBM1265':
-			case 'ISO-UNICODE-IBM-1265':
-				return 'ISO-Unicode-IBM-1265';
-
-			case 'CSUNICODEIBM1268':
-			case 'ISO-UNICODE-IBM-1268':
-				return 'ISO-Unicode-IBM-1268';
-
-			case 'CSUNICODEIBM1276':
-			case 'ISO-UNICODE-IBM-1276':
-				return 'ISO-Unicode-IBM-1276';
-
-			case 'CSISO10367BOX':
-			case 'ISO-IR-155':
-			case 'ISO_10367-BOX':
-				return 'ISO_10367-box';
-
-			case 'CSISO2033':
-			case 'E13B':
-			case 'ISO-IR-98':
-			case 'ISO_2033-1983':
-				return 'ISO_2033-1983';
-
-			case 'CSISO5427CYRILLIC':
-			case 'ISO-IR-37':
-			case 'ISO_5427':
-				return 'ISO_5427';
-
-			case 'ISO-IR-54':
-			case 'ISO5427CYRILLIC1981':
-			case 'ISO_5427:1981':
-				return 'ISO_5427:1981';
-
-			case 'CSISO5428GREEK':
-			case 'ISO-IR-55':
-			case 'ISO_5428:1980':
-				return 'ISO_5428:1980';
-
-			case 'CSISO646BASIC1983':
-			case 'ISO_646.BASIC:1983':
-			case 'REF':
-				return 'ISO_646.basic:1983';
-
-			case 'CSISO2INTLREFVERSION':
-			case 'IRV':
-			case 'ISO-IR-2':
-			case 'ISO_646.IRV:1983':
-				return 'ISO_646.irv:1983';
-
-			case 'CSISO6937ADD':
-			case 'ISO-IR-152':
-			case 'ISO_6937-2-25':
-				return 'ISO_6937-2-25';
-
-			case 'CSISOTEXTCOMM':
-			case 'ISO-IR-142':
-			case 'ISO_6937-2-ADD':
-				return 'ISO_6937-2-add';
-
-			case 'CSISO8859SUPP':
-			case 'ISO-IR-154':
-			case 'ISO_8859-SUPP':
-			case 'LATIN1-2-5':
-				return 'ISO_8859-supp';
-
-			case 'CSISO15ITALIAN':
-			case 'ISO-IR-15':
-			case 'ISO646-IT':
-			case 'IT':
-				return 'IT';
-
-			case 'CSISO13JISC6220JP':
-			case 'ISO-IR-13':
-			case 'JIS_C6220-1969':
-			case 'JIS_C6220-1969-JP':
-			case 'KATAKANA':
-			case 'X0201-7':
-				return 'JIS_C6220-1969-jp';
-
-			case 'CSISO14JISC6220RO':
-			case 'ISO-IR-14':
-			case 'ISO646-JP':
-			case 'JIS_C6220-1969-RO':
-			case 'JP':
-				return 'JIS_C6220-1969-ro';
-
-			case 'CSISO42JISC62261978':
-			case 'ISO-IR-42':
-			case 'JIS_C6226-1978':
-				return 'JIS_C6226-1978';
-
-			case 'CSISO87JISX0208':
-			case 'ISO-IR-87':
-			case 'JIS_C6226-1983':
-			case 'JIS_X0208-1983':
-			case 'X0208':
-				return 'JIS_C6226-1983';
-
-			case 'CSISO91JISC62291984A':
-			case 'ISO-IR-91':
-			case 'JIS_C6229-1984-A':
-			case 'JP-OCR-A':
-				return 'JIS_C6229-1984-a';
-
-			case 'CSISO92JISC62991984B':
-			case 'ISO-IR-92':
-			case 'ISO646-JP-OCR-B':
-			case 'JIS_C6229-1984-B':
-			case 'JP-OCR-B':
-				return 'JIS_C6229-1984-b';
-
-			case 'CSISO93JIS62291984BADD':
-			case 'ISO-IR-93':
-			case 'JIS_C6229-1984-B-ADD':
-			case 'JP-OCR-B-ADD':
-				return 'JIS_C6229-1984-b-add';
-
-			case 'CSISO94JIS62291984HAND':
-			case 'ISO-IR-94':
-			case 'JIS_C6229-1984-HAND':
-			case 'JP-OCR-HAND':
-				return 'JIS_C6229-1984-hand';
-
-			case 'CSISO95JIS62291984HANDADD':
-			case 'ISO-IR-95':
-			case 'JIS_C6229-1984-HAND-ADD':
-			case 'JP-OCR-HAND-ADD':
-				return 'JIS_C6229-1984-hand-add';
-
-			case 'CSISO96JISC62291984KANA':
-			case 'ISO-IR-96':
-			case 'JIS_C6229-1984-KANA':
-				return 'JIS_C6229-1984-kana';
-
-			case 'CSJISENCODING':
-			case 'JIS_ENCODING':
-				return 'JIS_Encoding';
-
-			case 'CSHALFWIDTHKATAKANA':
-			case 'JIS_X0201':
-			case 'X0201':
-				return 'JIS_X0201';
-
-			case 'CSISO159JISX02121990':
-			case 'ISO-IR-159':
-			case 'JIS_X0212-1990':
-			case 'X0212':
-				return 'JIS_X0212-1990';
-
-			case 'CSISO141JUSIB1002':
-			case 'ISO-IR-141':
-			case 'ISO646-YU':
-			case 'JS':
-			case 'JUS_I.B1.002':
-			case 'YU':
-				return 'JUS_I.B1.002';
-
-			case 'CSISO147MACEDONIAN':
-			case 'ISO-IR-147':
-			case 'JUS_I.B1.003-MAC':
-			case 'MACEDONIAN':
-				return 'JUS_I.B1.003-mac';
-
-			case 'CSISO146SERBIAN':
-			case 'ISO-IR-146':
-			case 'JUS_I.B1.003-SERB':
-			case 'SERBIAN':
-				return 'JUS_I.B1.003-serb';
-
-			case 'KOI7-SWITCHED':
-				return 'KOI7-switched';
-
-			case 'CSKOI8R':
-			case 'KOI8-R':
-				return 'KOI8-R';
-
-			case 'KOI8-U':
-				return 'KOI8-U';
-
-			case 'CSKSC5636':
-			case 'ISO646-KR':
-			case 'KSC5636':
-				return 'KSC5636';
-
-			case 'CSKSC56011987':
-			case 'ISO-IR-149':
-			case 'KOREAN':
-			case 'KSC_5601':
-			case 'KS_C_5601-1987':
-			case 'KS_C_5601-1989':
-				return 'KS_C_5601-1987';
-
-			case 'CSKZ1048':
-			case 'KZ-1048':
-			case 'RK1048':
-			case 'STRK1048-2002':
-				return 'KZ-1048';
-
-			case 'CSISO27LATINGREEK1':
-			case 'ISO-IR-27':
-			case 'LATIN-GREEK-1':
-				return 'Latin-greek-1';
-
-			case 'CSMNEM':
-			case 'MNEM':
-				return 'MNEM';
-
-			case 'CSMNEMONIC':
-			case 'MNEMONIC':
-				return 'MNEMONIC';
-
-			case 'CSISO86HUNGARIAN':
-			case 'HU':
-			case 'ISO-IR-86':
-			case 'ISO646-HU':
-			case 'MSZ_7795.3':
-				return 'MSZ_7795.3';
-
-			case 'CSMICROSOFTPUBLISHING':
-			case 'MICROSOFT-PUBLISHING':
-				return 'Microsoft-Publishing';
-
-			case 'CSNATSDANO':
-			case 'ISO-IR-9-1':
-			case 'NATS-DANO':
-				return 'NATS-DANO';
-
-			case 'CSNATSDANOADD':
-			case 'ISO-IR-9-2':
-			case 'NATS-DANO-ADD':
-				return 'NATS-DANO-ADD';
-
-			case 'CSNATSSEFI':
-			case 'ISO-IR-8-1':
-			case 'NATS-SEFI':
-				return 'NATS-SEFI';
-
-			case 'CSNATSSEFIADD':
-			case 'ISO-IR-8-2':
-			case 'NATS-SEFI-ADD':
-				return 'NATS-SEFI-ADD';
-
-			case 'CSISO151CUBA':
-			case 'CUBA':
-			case 'ISO-IR-151':
-			case 'ISO646-CU':
-			case 'NC_NC00-10:81':
-				return 'NC_NC00-10:81';
-
-			case 'CSISO69FRENCH':
-			case 'FR':
-			case 'ISO-IR-69':
-			case 'ISO646-FR':
-			case 'NF_Z_62-010':
-				return 'NF_Z_62-010';
-
-			case 'CSISO25FRENCH':
-			case 'ISO-IR-25':
-			case 'ISO646-FR1':
-			case 'NF_Z_62-010_(1973)':
-				return 'NF_Z_62-010_(1973)';
-
-			case 'CSISO60DANISHNORWEGIAN':
-			case 'CSISO60NORWEGIAN1':
-			case 'ISO-IR-60':
-			case 'ISO646-NO':
-			case 'NO':
-			case 'NS_4551-1':
-				return 'NS_4551-1';
-
-			case 'CSISO61NORWEGIAN2':
-			case 'ISO-IR-61':
-			case 'ISO646-NO2':
-			case 'NO2':
-			case 'NS_4551-2':
-				return 'NS_4551-2';
-
-			case 'OSD_EBCDIC_DF03_IRV':
-				return 'OSD_EBCDIC_DF03_IRV';
-
-			case 'OSD_EBCDIC_DF04_1':
-				return 'OSD_EBCDIC_DF04_1';
-
-			case 'OSD_EBCDIC_DF04_15':
-				return 'OSD_EBCDIC_DF04_15';
-
-			case 'CSPC8DANISHNORWEGIAN':
-			case 'PC8-DANISH-NORWEGIAN':
-				return 'PC8-Danish-Norwegian';
-
-			case 'CSPC8TURKISH':
-			case 'PC8-TURKISH':
-				return 'PC8-Turkish';
-
-			case 'CSISO16PORTUGUESE':
-			case 'ISO-IR-16':
-			case 'ISO646-PT':
-			case 'PT':
-				return 'PT';
-
-			case 'CSISO84PORTUGUESE2':
-			case 'ISO-IR-84':
-			case 'ISO646-PT2':
-			case 'PT2':
-				return 'PT2';
-
-			case 'CP154':
-			case 'CSPTCP154':
-			case 'CYRILLIC-ASIAN':
-			case 'PT154':
-			case 'PTCP154':
-				return 'PTCP154';
-
-			case 'SCSU':
-				return 'SCSU';
-
-			case 'CSISO10SWEDISH':
-			case 'FI':
-			case 'ISO-IR-10':
-			case 'ISO646-FI':
-			case 'ISO646-SE':
-			case 'SE':
-			case 'SEN_850200_B':
-				return 'SEN_850200_B';
-
-			case 'CSISO11SWEDISHFORNAMES':
-			case 'ISO-IR-11':
-			case 'ISO646-SE2':
-			case 'SE2':
-			case 'SEN_850200_C':
-				return 'SEN_850200_C';
-
-			case 'CSSHIFTJIS':
-			case 'MS_KANJI':
-			case 'SHIFT_JIS':
-				return 'Shift_JIS';
-
-			case 'CSISO128T101G2':
-			case 'ISO-IR-128':
-			case 'T.101-G2':
-				return 'T.101-G2';
-
-			case 'CSISO102T617BIT':
-			case 'ISO-IR-102':
-			case 'T.61-7BIT':
-				return 'T.61-7bit';
-
-			case 'CSISO103T618BIT':
-			case 'ISO-IR-103':
-			case 'T.61':
-			case 'T.61-8BIT':
-				return 'T.61-8bit';
-
-			case 'CSTSCII':
-			case 'TSCII':
-				return 'TSCII';
-
-			case 'CSUNICODE11':
-			case 'UNICODE-1-1':
-				return 'UNICODE-1-1';
-
-			case 'CSUNICODE11UTF7':
-			case 'UNICODE-1-1-UTF-7':
-				return 'UNICODE-1-1-UTF-7';
-
-			case 'CSUNKNOWN8BIT':
-			case 'UNKNOWN-8BIT':
-				return 'UNKNOWN-8BIT';
-
-			case 'ANSI':
-			case 'ANSI_X3.4-1968':
-			case 'ANSI_X3.4-1986':
-			case 'ASCII':
-			case 'CP367':
-			case 'CSASCII':
-			case 'IBM367':
-			case 'ISO-IR-6':
-			case 'ISO646-US':
-			case 'ISO_646.IRV:1991':
-			case 'US':
-			case 'US-ASCII':
-				return 'US-ASCII';
-
-			case 'UTF-16':
-				return 'UTF-16';
-
-			case 'UTF-16BE':
-				return 'UTF-16BE';
-
-			case 'UTF-16LE':
-				return 'UTF-16LE';
-
-			case 'UTF-32':
-				return 'UTF-32';
-
-			case 'UTF-32BE':
-				return 'UTF-32BE';
-
-			case 'UTF-32LE':
-				return 'UTF-32LE';
-
-			case 'UTF-7':
-				return 'UTF-7';
-
-			case 'UTF-8':
-				return 'UTF-8';
-
-			case 'CSVIQR':
-			case 'VIQR':
-				return 'VIQR';
-
-			case 'CSVISCII':
-			case 'VISCII':
-				return 'VISCII';
-
-			case 'CSVENTURAINTERNATIONAL':
-			case 'VENTURA-INTERNATIONAL':
-				return 'Ventura-International';
-
-			case 'CSVENTURAMATH':
-			case 'VENTURA-MATH':
-				return 'Ventura-Math';
-
-			case 'CSVENTURAUS':
-			case 'VENTURA-US':
-				return 'Ventura-US';
-
-			case 'CSWINDOWS31J':
-			case 'WINDOWS-31J':
-				return 'Windows-31J';
-
-			case 'CSDKUS':
-			case 'DK-US':
-				return 'dk-us';
-
-			case 'CSISO150':
-			case 'CSISO150GREEKCCITT':
-			case 'GREEK-CCITT':
-			case 'ISO-IR-150':
-				return 'greek-ccitt';
-
-			case 'CSISO88GREEK7':
-			case 'GREEK7':
-			case 'ISO-IR-88':
-				return 'greek7';
-
-			case 'CSISO18GREEK7OLD':
-			case 'GREEK7-OLD':
-			case 'ISO-IR-18':
-				return 'greek7-old';
-
-			case 'CSHPROMAN8':
-			case 'HP-ROMAN8':
-			case 'R8':
-			case 'ROMAN8':
-				return 'hp-roman8';
-
-			case 'CSISO90':
-			case 'ISO-IR-90':
+			case 'csisolatin6':
+			case 'iso885910':
+			case 'isoir157':
+			case 'iso8859101992':
+			case 'l6':
+			case 'latin6':
+				return 'ISO-8859-10';
+
+			case 'iso885913':
+				return 'ISO-8859-13';
+
+			case 'iso885914':
+			case 'isoceltic':
+			case 'isoir199':
+			case 'iso885914':
+			case 'iso8859141998':
+			case 'l8':
+			case 'latin8':
+				return 'ISO-8859-14';
+
+			case 'iso885915':
+			case 'iso885915':
+			case 'latin9':
+				return 'ISO-8859-15';
+
+			case 'iso885916':
+			case 'isoir226':
+			case 'iso885916':
+			case 'iso8859162001':
+			case 'l10':
+			case 'latin10':
+				return 'ISO-8859-16';
+
+			case 'iso10646j1':
+				return 'ISO-10646-J-1';
+
+			case 'csunicode':
+			case 'iso10646ucs2':
+				return 'ISO-10646-UCS-2';
+
+			case 'csucs4':
+			case 'iso10646ucs4':
+				return 'ISO-10646-UCS-4';
+
+			case 'csunicodeascii':
+			case 'iso10646ucsbasic':
+				return 'ISO-10646-UCS-Basic';
+
+			case 'csunicodelatin1':
+			case 'iso10646':
+			case 'iso10646unicodelatin1':
+				return 'ISO-10646-Unicode-Latin1';
+
+			case 'csiso10646utf1':
+			case 'iso10646utf1':
+				return 'ISO-10646-UTF-1';
+
+			case 'csiso115481':
+			case 'iso115481':
+			case 'iso115481':
+			case 'isotr115481':
+				return 'ISO-11548-1';
+
+			case 'csiso90':
+			case 'isoir90':
 				return 'iso-ir-90';
 
-			case 'CSISO19LATINGREEK':
-			case 'ISO-IR-19':
-			case 'LATIN-GREEK':
+			case 'csunicodeibm1261':
+			case 'isounicodeibm1261':
+				return 'ISO-Unicode-IBM-1261';
+
+			case 'csunicodeibm1264':
+			case 'isounicodeibm1264':
+				return 'ISO-Unicode-IBM-1264';
+
+			case 'csunicodeibm1265':
+			case 'isounicodeibm1265':
+				return 'ISO-Unicode-IBM-1265';
+
+			case 'csunicodeibm1268':
+			case 'isounicodeibm1268':
+				return 'ISO-Unicode-IBM-1268';
+
+			case 'csunicodeibm1276':
+			case 'isounicodeibm1276':
+				return 'ISO-Unicode-IBM-1276';
+
+			case 'csiso646basic1983':
+			case 'iso646basic1983':
+			case 'ref':
+				return 'ISO_646.basic:1983';
+
+			case 'csiso2intlrefversion':
+			case 'irv':
+			case 'isoir2':
+			case 'iso646irv1983':
+				return 'ISO_646.irv:1983';
+
+			case 'csiso2033':
+			case 'e13b':
+			case 'isoir98':
+			case 'iso20331983':
+				return 'ISO_2033-1983';
+
+			case 'csiso5427cyrillic':
+			case 'isoir37':
+			case 'iso5427':
+				return 'ISO_5427';
+
+			case 'isoir54':
+			case 'iso5427cyrillic1981':
+			case 'iso54271981':
+				return 'ISO_5427:1981';
+
+			case 'csiso5428greek':
+			case 'isoir55':
+			case 'iso54281980':
+				return 'ISO_5428:1980';
+
+			case 'csiso6937add':
+			case 'isoir152':
+			case 'iso6937225':
+				return 'ISO_6937-2-25';
+
+			case 'csisotextcomm':
+			case 'isoir142':
+			case 'iso69372add':
+				return 'ISO_6937-2-add';
+
+			case 'csiso8859supp':
+			case 'isoir154':
+			case 'iso8859supp':
+			case 'latin125':
+				return 'ISO_8859-supp';
+
+			case 'csiso10367box':
+			case 'isoir155':
+			case 'iso10367box':
+				return 'ISO_10367-box';
+
+			case 'csiso15italian':
+			case 'isoir15':
+			case 'iso646it':
+			case 'it':
+				return 'IT';
+
+			case 'csiso13jisc6220jp':
+			case 'isoir13':
+			case 'jisc62201969':
+			case 'jisc62201969jp':
+			case 'katakana':
+			case 'x02017':
+				return 'JIS_C6220-1969-jp';
+
+			case 'csiso14jisc6220ro':
+			case 'isoir14':
+			case 'iso646jp':
+			case 'jisc62201969ro':
+			case 'jp':
+				return 'JIS_C6220-1969-ro';
+
+			case 'csiso42jisc62261978':
+			case 'isoir42':
+			case 'jisc62261978':
+				return 'JIS_C6226-1978';
+
+			case 'csiso87jisx0208':
+			case 'isoir87':
+			case 'jisc62261983':
+			case 'jisx02081983':
+			case 'x0208':
+				return 'JIS_C6226-1983';
+
+			case 'csiso91jisc62291984a':
+			case 'isoir91':
+			case 'jisc62291984a':
+			case 'jpocra':
+				return 'JIS_C6229-1984-a';
+
+			case 'csiso92jisc62991984b':
+			case 'isoir92':
+			case 'iso646jpocrb':
+			case 'jisc62291984b':
+			case 'jpocrb':
+				return 'JIS_C6229-1984-b';
+
+			case 'csiso93jis62291984badd':
+			case 'isoir93':
+			case 'jisc62291984badd':
+			case 'jpocrbadd':
+				return 'JIS_C6229-1984-b-add';
+
+			case 'csiso94jis62291984hand':
+			case 'isoir94':
+			case 'jisc62291984hand':
+			case 'jpocrhand':
+				return 'JIS_C6229-1984-hand';
+
+			case 'csiso95jis62291984handadd':
+			case 'isoir95':
+			case 'jisc62291984handadd':
+			case 'jpocrhandadd':
+				return 'JIS_C6229-1984-hand-add';
+
+			case 'csiso96jisc62291984kana':
+			case 'isoir96':
+			case 'jisc62291984kana':
+				return 'JIS_C6229-1984-kana';
+
+			case 'csjisencoding':
+			case 'jisencoding':
+				return 'JIS_Encoding';
+
+			case 'cshalfwidthkatakana':
+			case 'jisx0201':
+			case 'x0201':
+				return 'JIS_X0201';
+
+			case 'csiso159jisx02121990':
+			case 'isoir159':
+			case 'jisx02121990':
+			case 'x0212':
+				return 'JIS_X0212-1990';
+
+			case 'csiso141jusib1002':
+			case 'isoir141':
+			case 'iso646yu':
+			case 'js':
+			case 'jusib1002':
+			case 'yu':
+				return 'JUS_I.B1.002';
+
+			case 'csiso147macedonian':
+			case 'isoir147':
+			case 'jusib1003mac':
+			case 'macedonian':
+				return 'JUS_I.B1.003-mac';
+
+			case 'csiso146serbian':
+			case 'isoir146':
+			case 'jusib1003serb':
+			case 'serbian':
+				return 'JUS_I.B1.003-serb';
+
+			case 'koi7switched':
+				return 'KOI7-switched';
+
+			case 'cskoi8r':
+			case 'koi8r':
+				return 'KOI8-R';
+
+			case 'koi8u':
+				return 'KOI8-U';
+
+			case 'csksc5636':
+			case 'iso646kr':
+			case 'ksc5636':
+				return 'KSC5636';
+
+			case 'cskz1048':
+			case 'kz1048':
+			case 'rk1048':
+			case 'strk10482002':
+				return 'KZ-1048';
+
+			case 'csiso19latingreek':
+			case 'isoir19':
+			case 'latingreek':
 				return 'latin-greek';
 
-			case 'CSISO158LAP':
-			case 'ISO-IR-158':
-			case 'LAP':
-			case 'LATIN-LAP':
+			case 'csiso27latingreek1':
+			case 'isoir27':
+			case 'latingreek1':
+				return 'Latin-greek-1';
+
+			case 'csiso158lap':
+			case 'isoir158':
+			case 'lap':
+			case 'latinlap':
 				return 'latin-lap';
 
-			case 'CSMACINTOSH':
-			case 'MAC':
-			case 'MACINTOSH':
+			case 'csmacintosh':
+			case 'mac':
+			case 'macintosh':
 				return 'macintosh';
 
-			case 'CSUSDK':
-			case 'US-DK':
+			case 'csmicrosoftpublishing':
+			case 'microsoftpublishing':
+				return 'Microsoft-Publishing';
+
+			case 'csmnem':
+			case 'mnem':
+				return 'MNEM';
+
+			case 'csmnemonic':
+			case 'mnemonic':
+				return 'MNEMONIC';
+
+			case 'csiso86hungarian':
+			case 'hu':
+			case 'isoir86':
+			case 'iso646hu':
+			case 'msz77953':
+				return 'MSZ_7795.3';
+
+			case 'csnatsdano':
+			case 'isoir91':
+			case 'natsdano':
+				return 'NATS-DANO';
+
+			case 'csnatsdanoadd':
+			case 'isoir92':
+			case 'natsdanoadd':
+				return 'NATS-DANO-ADD';
+
+			case 'csnatssefi':
+			case 'isoir81':
+			case 'natssefi':
+				return 'NATS-SEFI';
+
+			case 'csnatssefiadd':
+			case 'isoir82':
+			case 'natssefiadd':
+				return 'NATS-SEFI-ADD';
+
+			case 'csiso151cuba':
+			case 'cuba':
+			case 'isoir151':
+			case 'iso646cu':
+			case 'ncnc001081':
+				return 'NC_NC00-10:81';
+
+			case 'csiso69french':
+			case 'fr':
+			case 'isoir69':
+			case 'iso646fr':
+			case 'nfz62010':
+				return 'NF_Z_62-010';
+
+			case 'csiso25french':
+			case 'isoir25':
+			case 'iso646fr1':
+			case 'nfz620101973':
+				return 'NF_Z_62-010_(1973)';
+
+			case 'csiso60danishnorwegian':
+			case 'csiso60norwegian1':
+			case 'isoir60':
+			case 'iso646no':
+			case 'no':
+			case 'ns45511':
+				return 'NS_4551-1';
+
+			case 'csiso61norwegian2':
+			case 'isoir61':
+			case 'iso646no2':
+			case 'no2':
+			case 'ns45512':
+				return 'NS_4551-2';
+
+			case 'osdebcdicdf03irv':
+				return 'OSD_EBCDIC_DF03_IRV';
+
+			case 'osdebcdicdf041':
+				return 'OSD_EBCDIC_DF04_1';
+
+			case 'osdebcdicdf0415':
+				return 'OSD_EBCDIC_DF04_15';
+
+			case 'cspc8danishnorwegian':
+			case 'pc8danishnorwegian':
+				return 'PC8-Danish-Norwegian';
+
+			case 'cspc8turkish':
+			case 'pc8turkish':
+				return 'PC8-Turkish';
+
+			case 'csiso16portuguese':
+			case 'isoir16':
+			case 'iso646pt':
+			case 'pt':
+				return 'PT';
+
+			case 'csiso84portuguese2':
+			case 'isoir84':
+			case 'iso646pt2':
+			case 'pt2':
+				return 'PT2';
+
+			case 'cp154':
+			case 'csptcp154':
+			case 'cyrillicasian':
+			case 'pt154':
+			case 'ptcp154':
+				return 'PTCP154';
+
+			case 'scsu':
+				return 'SCSU';
+
+			case 'csiso10swedish':
+			case 'fi':
+			case 'isoir10':
+			case 'iso646fi':
+			case 'iso646se':
+			case 'se':
+			case 'sen850200b':
+				return 'SEN_850200_B';
+
+			case 'csiso11swedishfornames':
+			case 'isoir11':
+			case 'iso646se2':
+			case 'se2':
+			case 'sen850200c':
+				return 'SEN_850200_C';
+
+			case 'csshiftjis':
+			case 'mskanji':
+			case 'shiftjis':
+				return 'Shift_JIS';
+
+			case 'csiso102t617bit':
+			case 'isoir102':
+			case 't617bit':
+				return 'T.61-7bit';
+
+			case 'csiso103t618bit':
+			case 'isoir103':
+			case 't61':
+			case 't618bit':
+				return 'T.61-8bit';
+
+			case 'csiso128t101g2':
+			case 'isoir128':
+			case 't101g2':
+				return 'T.101-G2';
+
+			case 'cstscii':
+			case 'tscii':
+				return 'TSCII';
+
+			case 'csunicode11':
+			case 'unicode11':
+				return 'UNICODE-1-1';
+
+			case 'csunicode11utf7':
+			case 'unicode11utf7':
+				return 'UNICODE-1-1-UTF-7';
+
+			case 'csunknown8bit':
+			case 'unknown8bit':
+				return 'UNKNOWN-8BIT';
+
+			case 'ansix341968':
+			case 'ansix341986':
+			case 'ascii':
+			case 'cp367':
+			case 'csascii':
+			case 'ibm367':
+			case 'isoir6':
+			case 'iso646us':
+			case 'iso646irv1991':
+			case 'us':
+			case 'usascii':
+				return 'US-ASCII';
+
+			case 'csusdk':
+			case 'usdk':
 				return 'us-dk';
 
-			case 'CSISO70VIDEOTEXSUPP1':
-			case 'ISO-IR-70':
-			case 'VIDEOTEX-SUPPL':
+			case 'utf7':
+				return 'UTF-7';
+
+			case 'utf8':
+				return 'UTF-8';
+
+			case 'utf16':
+				return 'UTF-16';
+
+			case 'utf16be':
+				return 'UTF-16BE';
+
+			case 'utf16le':
+				return 'UTF-16LE';
+
+			case 'utf32':
+				return 'UTF-32';
+
+			case 'utf32be':
+				return 'UTF-32BE';
+
+			case 'utf32le':
+				return 'UTF-32LE';
+
+			case 'csventurainternational':
+			case 'venturainternational':
+				return 'Ventura-International';
+
+			case 'csventuramath':
+			case 'venturamath':
+				return 'Ventura-Math';
+
+			case 'csventuraus':
+			case 'venturaus':
+				return 'Ventura-US';
+
+			case 'csiso70videotexsupp1':
+			case 'isoir70':
+			case 'videotexsuppl':
 				return 'videotex-suppl';
 
-			case 'WINDOWS-1250':
+			case 'csviqr':
+			case 'viqr':
+				return 'VIQR';
+
+			case 'csviscii':
+			case 'viscii':
+				return 'VISCII';
+
+			case 'cswindows31j':
+			case 'windows31j':
+				return 'Windows-31J';
+
+			case 'iso885911':
+			case 'tis620':
+				return 'Windows-874';
+
+			case 'cseuckr':
+			case 'euckr':
+			case 'windows949':
+			case 'csksc56011987':
+			case 'isoir149':
+			case 'korean':
+			case 'ksc5601':
+			case 'ksc56011987':
+			case 'ksc56011989':
+				return 'Windows-949';
+
+			case 'windows1250':
 				return 'windows-1250';
 
-			case 'WINDOWS-1251':
+			case 'windows1251':
 				return 'windows-1251';
 
-			case 'CP819':
-			case 'CSISOLATIN1':
-			case 'IBM819':
-			case 'ISO-8859-1':
-			case 'ISO-IR-100':
-			case 'ISO_8859-1':
-			case 'ISO_8859-1:1987':
-			case 'L1':
-			case 'LATIN1':
-			case 'WINDOWS-1252':
+			case 'cp819':
+			case 'csisolatin1':
+			case 'ibm819':
+			case 'iso88591':
+			case 'isoir100':
+			case 'iso885911987':
+			case 'l1':
+			case 'latin1':
+			case 'windows1252':
+				return 'Windows-1252';
+
+			case 'windows1252':
 				return 'windows-1252';
 
-			case 'WINDOWS-1253':
+			case 'windows1253':
 				return 'windows-1253';
 
-			case 'WINDOWS-1254':
+			case 'csisolatin5':
+			case 'iso88599':
+			case 'isoir148':
+			case 'iso885991989':
+			case 'l5':
+			case 'latin5':
+			case 'windows1254':
+				return 'Windows-1254';
+
+			case 'windows1254':
 				return 'windows-1254';
 
-			case 'WINDOWS-1255':
+			case 'windows1255':
 				return 'windows-1255';
 
-			case 'WINDOWS-1256':
+			case 'windows1256':
 				return 'windows-1256';
 
-			case 'WINDOWS-1257':
+			case 'windows1257':
 				return 'windows-1257';
 
-			case 'WINDOWS-1258':
+			case 'windows1258':
 				return 'windows-1258';
 
 			default:
-				return $encoding;
+				return $charset;
 		}
 	}
 
@@ -12508,7 +12857,7 @@ class SimplePie_Locator
 		{
 			$sniffer = new $this->content_type_sniffer_class($file);
 			$sniffed = $sniffer->get_type();
-			if (in_array($sniffed, array('application/rss+xml', 'application/rdf+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/plain')))
+			if (in_array($sniffed, array('application/rss+xml', 'application/rdf+xml', 'text/rdf', 'application/atom+xml', 'text/xml', 'application/xml')))
 			{
 				return true;
 			}
@@ -12569,7 +12918,7 @@ class SimplePie_Locator
 				if (!in_array($href, $done) && in_array('feed', $rel) || (in_array('alternate', $rel) && !empty($link['attribs']['type']['data']) && in_array(strtolower(SimplePie_Misc::parse_mime($link['attribs']['type']['data'])), array('application/rss+xml', 'application/atom+xml'))))
 				{
 					$this->checked_feeds++;
-					$feed = new $this->file_class($href, $this->timeout, 5, null, $this->useragent);
+					$feed =& new $this->file_class($href, $this->timeout, 5, null, $this->useragent);
 					if ($this->is_feed($feed))
 					{
 						return $feed;
@@ -12634,7 +12983,7 @@ class SimplePie_Locator
 			if (in_array(strtolower(strrchr($value, '.')), array('.rss', '.rdf', '.atom', '.xml')))
 			{
 				$this->checked_feeds++;
-				$feed = new $this->file_class($value, $this->timeout, 5, null, $this->useragent);
+				$feed =& new $this->file_class($value, $this->timeout, 5, null, $this->useragent);
 				if ($this->is_feed($feed))
 				{
 					return $feed;
@@ -12659,7 +13008,7 @@ class SimplePie_Locator
 			if (preg_match('/(rss|rdf|atom|xml)/i', $value))
 			{
 				$this->checked_feeds++;
-				$feed = new $this->file_class($value, $this->timeout, 5, null, $this->useragent);
+				$feed =& new $this->file_class($value, $this->timeout, 5, null, $this->useragent);
 				if ($this->is_feed($feed))
 				{
 					return $feed;
@@ -12746,6 +13095,13 @@ class SimplePie_Parser
 				return false;
 			}
 		}
+
+		// Work around libxml bug
+		$data = str_replace('&lt;', '&#60;', $data);
+		$data = str_replace('&gt;', '&#62;', $data);
+		$data = str_replace('&amp;', '&#38;', $data);
+		$data = str_replace('&apos;', '&#39;', $data);
+		$data = str_replace('&quot;', '&#34;', $data);
 
 		$return = true;
 
@@ -13215,7 +13571,7 @@ class SimplePie_Sanitize
 							}
 							else
 							{
-								$file = new $this->file_class($img['attribs']['src']['data'], $this->timeout, 5, array('X-FORWARDED-FOR' => $_SERVER['REMOTE_ADDR']), $this->useragent, $this->force_fsockopen);
+								$file =& new $this->file_class($img['attribs']['src']['data'], $this->timeout, 5, array('X-FORWARDED-FOR' => $_SERVER['REMOTE_ADDR']), $this->useragent, $this->force_fsockopen);
 								$headers = $file->headers;
 
 								if ($file->success && ($file->status_code == 200 || ($file->status_code > 206 && $file->status_code < 300)))
