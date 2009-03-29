@@ -4,22 +4,19 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
+require_once(dirname(__FILE__).'/vendor/simplepie/simplepie.inc');
 
 /**
  * The purpose of this plugin is to facilitate the use of SimplePie
- * whithin a Symfony project:
+ * within a Symfony project:
  *  - it allows you to autoload the SimplePie class
  *  - it uses the Symfony cache directory
  *
- * @package    symfony
- * @subpackage amSimplePiePlugin
- * @author     Laurent Bachelier <laurentb@allomatch.com>
- * @link       http://www.allomatch.com/
- * @version    SVN: $Id: amSimplePie.class.php 3179 2008-08-29 12:21:39Z laurentb $
+ * @package    amSimplePiePlugin
+ * @subpackage lib
+ * @author     Laurent Bachelier <laurent@bachelier.name>
+ * @link       http://www.symfony-project.org/plugins/amSimplePiePlugin
  */
-
-require_once('simplepie/simplepie.inc');
-
 class amSimplePie
 {
   /**
@@ -29,16 +26,21 @@ class amSimplePie
 
   /**
    * Inits an amSimplePie object, wrapping a SimplePie object
+   * It works the same as the SimplePie constructor,
+   * except that there is a $no_cache parameter instead of $cache_location.
    * @param string $feed_url Same as the $feed_url parameter of SimplePie()
    * @param integer $cache_duration Same as the $cache_duration parameter of SimplePie()
    * @param boolean $no_cache Don't do anything with the cache
+   * @see SimplePie
    */
-  function amSimplePie($feed_url = null, $cache_duration = null, $no_cache = false)
+  function __construct($feed_url = null, $cache_duration = null, $no_cache = false)
   {
     // Set and create (if needed) the SimplePie cache directory
     if ($no_cache == false)
     {
-      $cache_location = sfConfig::get('sf_root_cache_dir').DIRECTORY_SEPARATOR.'SimplePie';
+      // Symfony 1.0+ use sf_cache_dir
+      $sf_cache_dir = sfConfig::get('sf_root_cache_dir', sfConfig::get('sf_cache_dir'));
+      $cache_location = $sf_cache_dir.DIRECTORY_SEPARATOR.'SimplePie';
 
       // Thanks to sfSmartyViewPlugin - create cache directory if needed:
       $log = sfConfig::get('sf_logging_enabled') ? sfContext::getInstance()->getLogger() : false;

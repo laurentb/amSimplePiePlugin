@@ -1,45 +1,46 @@
-amSimplePiePlugin
-===============
+# amSimplePiePlugin
 
 The purpose of this plugin is to facilitate the use of SimplePie
 whithin a Symfony project:
- - it allows you to autoload the SimplePie class
- - it uses the Symfony cache directory
 
-Installation
-------------
-
-  * *Install the plugin*
-
-    symfony plugin:install amSimplePiePlugin
-
-  * *Clear you cache*
-
-    symfony cc
+* it allows you to autoload the SimplePie class
+* it uses the Symfony cache directory
 
 
-Using the plugin
-----------------
+## Installation
 
-new amSimplePie() has the same behavior as new SimplePie(),
-without the $cache_location parameter.
+### Install the plugin
 
-$am_sp = new amSimplePie();
-$sp = $am_sp->getSP(); // SimplePie object ready for use
-$sp->set_feed_url('http://slashdot.org'/);
-$sp->set_cache_duration(3600);
-$sp->init();
-$sp->handle_content_type();
-foreach ($sp->get_items()) ...
+    php symfony plugin:install amSimplePiePlugin
+
+### Clear you cache
+
+    php symfony cc
+
+
+## Using the plugin
+
+``new amSimplePie()`` has the same behavior as ``new SimplePie()``,
+without the ``$cache_location`` parameter.
+
+    $am_sp = new amSimplePie();
+    $sp = $am_sp->getSP(); // SimplePie object ready for use
+    $sp->set_feed_url('http://rss.slashdot.org/Slashdot/slashdot');
+    $sp->set_cache_duration(3600);
+    $sp->init();
+    $sp->handle_content_type();
+    foreach ($sp->get_items()) ...
 
 OR
 
-$amsp = new amSimplePie('http://slashdot.org/', 3600);
-$sp = $amsp->getSP();
-foreach ($sp->get_items()) ...
+    $am_sp = new amSimplePie('http://rss.slashdot.org/Slashdot/slashdot', 3600);
+    $sp = $am_sp->getSP();
+    foreach ($sp->get_items()) ...
 
-NOTE: SimplePie 1.1.1 does not work well when the E_STRICT error reporting level is activated.
+NOTE: SimplePie 1.x does not work well when the ``E_STRICT`` error reporting
+level is activated. I advise you to disable it on the fly while you are
+using SimplePie.
 
 
-Copyright http://www.allomatch.com/
+Copyright 2008-2009 [Theodo](http://www.theodo.fr/)
 
