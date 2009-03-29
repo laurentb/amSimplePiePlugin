@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" packagerversion="1.6.1" version="2.0" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0 http://pear.php.net/dtd/tasks-1.0.xsd http://pear.php.net/dtd/package-2.0 http://pear.php.net/dtd/package-2.0.xsd">
+ <name>amSimplePiePlugin</name>
+ <channel>pear.symfony-project.com</channel>
+ <summary>The purpose of this plugin is to facilitate the use of SimplePie whithin a Symfony project.</summary>
+ <description>The purpose of this plugin is to facilitate the use of SimplePie whithin a Symfony project:
+   - it allows you to autoload the SimplePie class
+   - it uses the Symfony cache directory</description>
+ <lead>
+  <name>Laurent Bachelier</name>
+  <user>laurentb</user>
+  <email>laurentb@allomatch.com</email>
+  <active>yes</active>
+ </lead>
+ <lead>
+  <name>Fabrice Bernhard</name>
+  <user>fabriceb</user>
+  <email>fabriceb@allomatch.com</email>
+  <active>yes</active>
+ </lead>
+ <date>2008-08-29</date>
+ <time>20:15:50</time>
+ <version>
+  <release>1.0.1</release>
+  <api>1.0.0</api>
+ </version>
+ <stability>
+  <release>stable</release>
+  <api>stable</api>
+ </stability>
+ <license uri="http://www.symfony-project.com/license">MIT License</license>
+ <notes>--</notes>
+ <contents>
+  <dir baseinstalldir="/" name="/">
+   <file baseinstalldir="/" md5sum="060ba42b08a833fca3ecf0dc3a1385c6" name="lib/simplepie/compatibility_test/sp_compatibility_test.php" role="data"/>
+   <file baseinstalldir="/" md5sum="10bc7ff10d6f684a633c2bd4b1bdf136" name="lib/simplepie/compatibility_test/COMPATIBILITY README.txt" role="data"/>
+   <file baseinstalldir="/" md5sum="026b4ea20aacc2b801c3bf85099e2c23" name="lib/simplepie/idn/ReadMe.txt" role="data"/>
+   <file baseinstalldir="/" md5sum="138eb836916be69b77c9bf2afd7f68d9" name="lib/simplepie/idn/idna_convert.class.php" role="data"/>
+   <file baseinstalldir="/" md5sum="e844d12e1c72013c1d6bcfd559c69fde" name="lib/simplepie/idn/npdata.ser" role="data"/>
+   <file baseinstalldir="/" md5sum="8d671154906637c7c72632822ee9f730" name="lib/simplepie/idn/LICENCE" role="data"/>
+   <file baseinstalldir="/" md5sum="2377070dba7169692470a162614b8b29" name="lib/simplepie/LICENSE.txt" role="data"/>
+   <file baseinstalldir="/" md5sum="2f056eb773e99136023a9c4df80710d8" name="lib/simplepie/README.txt" role="data"/>
+   <file baseinstalldir="/" md5sum="cd13961e2d1c0e70daaa7c83540da35e" name="lib/simplepie/simplepie.inc" role="data"/>
+   <file baseinstalldir="/" md5sum="b6876a6fb23204471f74e827a993e92e" name="lib/amSimplePie.class.php" role="data"/>
+   <file baseinstalldir="/" md5sum="684d2583831e84c78cfba91f9c818fde" name="LICENSE" role="data"/>
+   <file baseinstalldir="/" md5sum="303b4d637e2f09d2133fc4b4e64a832d" name="README" role="data"/>
+  </dir>
+ </contents>
+ <dependencies>
+  <required>
+   <php>
+    <min>5.2.1</min>
+   </php>
+   <pearinstaller>
+    <min>1.4.1</min>
+   </pearinstaller>
+   
+  </required>
+ </dependencies>
+ <phprelease/>
+</package>
