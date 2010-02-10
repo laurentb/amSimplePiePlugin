@@ -28,8 +28,8 @@ $packagexml->setLicense('MIT License', 'http://www.symfony-project.org/license')
 
 // This will ADD a changelog entry to an existing package.xml
 $packagexml->setAPIVersion('1.0.0');
-$packagexml->setReleaseVersion('1.1.0');
-$packagexml->setNotes('Upgrade to SimplePie 1.1.3, documentation fixes, compatibility with Symfony 1.1+');
+$packagexml->setReleaseVersion('1.2.0');
+$packagexml->setNotes('Upgrade to SimplePie 1.2, compatibility with Symfony 1.4');
 
 $packagexml->setReleaseStability('stable');
 $packagexml->setAPIStability('stable');
@@ -39,7 +39,7 @@ $packagexml->setPhpDep('5.2.1');
 $packagexml->setPearinstallerDep('1.4.1');
 
 // Supported versions of Symfony
-$packagexml->addPackageDepWithChannel('required', 'symfony', 'pear.symfony-project.com', '1.0.0', '1.2.0');
+$packagexml->addPackageDepWithChannel('required', 'symfony', 'pear.symfony-project.com', '1.0.0', '1.4.0');
 
 $packagexml->generateContents(); // Add the files
 

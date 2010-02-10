@@ -19,10 +19,10 @@
   <email>fabriceb@allomatch.com</email>
   <active>yes</active>
  </lead>
- <date>2009-03-29</date>
- <time>21:39:53</time>
+ <date>2010-02-10</date>
+ <time>22:00:27</time>
  <version>
-  <release>1.1.0</release>
+  <release>1.2.0</release>
   <api>1.0.0</api>
  </version>
  <stability>
@@ -30,22 +30,23 @@
   <api>stable</api>
  </stability>
  <license uri="http://www.symfony-project.org/license">MIT License</license>
- <notes>Upgrade to SimplePie 1.1.3, documentation fixes, compatibility with Symfony 1.1+</notes>
+ <notes>Upgrade to SimplePie 1.2, compatibility with Symfony 1.4</notes>
  <contents>
   <dir baseinstalldir="/" name="/">
    <file baseinstalldir="/" md5sum="53764b2f1c0d21b5dc473c4489e87ef0" name="lib/amSimplePie.class.php" role="php" />
-   <file baseinstalldir="/" md5sum="521b44f8d8bd0672c4a26cce67d96280" name="lib/vendor/simplepie/create.php" role="php" />
+   <file baseinstalldir="/" md5sum="c9074b080526ecdc5a0d4b7974a85dab" name="lib/vendor/simplepie-simplepie-eff7715.tar.gz" role="data" />
+   <file baseinstalldir="/" md5sum="88e50b02d1d37491fbf4dfff38ed25ce" name="lib/vendor/simplepie/create.php" role="php" />
    <file baseinstalldir="/" md5sum="2377070dba7169692470a162614b8b29" name="lib/vendor/simplepie/LICENSE.txt" role="data" />
    <file baseinstalldir="/" md5sum="2f056eb773e99136023a9c4df80710d8" name="lib/vendor/simplepie/README.txt" role="data" />
-   <file baseinstalldir="/" md5sum="8ec96be8c8563404037de2ababc8546a" name="lib/vendor/simplepie/simplepie.inc" role="data" />
+   <file baseinstalldir="/" md5sum="c68b80f96809585270a54a0e7ec131d8" name="lib/vendor/simplepie/simplepie.inc" role="data" />
    <file baseinstalldir="/" md5sum="10bc7ff10d6f684a633c2bd4b1bdf136" name="lib/vendor/simplepie/compatibility_test/COMPATIBILITY README.txt" role="data" />
-   <file baseinstalldir="/" md5sum="d0176d94d5e74f58c875622b5b11c331" name="lib/vendor/simplepie/compatibility_test/sp_compatibility_test.php" role="php" />
+   <file baseinstalldir="/" md5sum="15658e0bf80dbc4bb01c747de0a32094" name="lib/vendor/simplepie/compatibility_test/sp_compatibility_test.php" role="php" />
    <file baseinstalldir="/" md5sum="138eb836916be69b77c9bf2afd7f68d9" name="lib/vendor/simplepie/idn/idna_convert.class.php" role="php" />
    <file baseinstalldir="/" md5sum="8d671154906637c7c72632822ee9f730" name="lib/vendor/simplepie/idn/LICENCE" role="data" />
    <file baseinstalldir="/" md5sum="e844d12e1c72013c1d6bcfd559c69fde" name="lib/vendor/simplepie/idn/npdata.ser" role="data" />
    <file baseinstalldir="/" md5sum="026b4ea20aacc2b801c3bf85099e2c23" name="lib/vendor/simplepie/idn/ReadMe.txt" role="data" />
    <file baseinstalldir="/" md5sum="51cdc6fda96d3aeb60959f07c08ed503" name="test/unit/amSimplePieTest.php" role="php" />
-   <file baseinstalldir="/" md5sum="9ab746a677083326830055b4185b8ec7" name="genpkgxml.php" role="php" />
+   <file baseinstalldir="/" md5sum="36a32b85b9a585dda9c3834cbc115c8f" name="genpkgxml.php" role="php" />
    <file baseinstalldir="/" md5sum="684d2583831e84c78cfba91f9c818fde" name="LICENSE" role="doc" />
    <file baseinstalldir="/" md5sum="bb507fe830c3b8ae418cd97bfa7f7a44" name="README" role="doc" />
   </dir>
@@ -62,7 +63,7 @@
     <name>symfony</name>
     <channel>pear.symfony-project.com</channel>
     <min>1.0.0</min>
-    <max>1.2.0</max>
+    <max>1.4.0</max>
    </package>
   </required>
  </dependencies>
@@ -80,6 +81,19 @@
    <date>2009-03-29</date>
    <license uri="http://www.symfony-project.org/license">MIT License</license>
    <notes>Upgrade to SimplePie 1.1.3, documentation fixes, compatibility with Symfony 1.1+</notes>
+  </release>
+  <release>
+   <version>
+    <release>1.2.0</release>
+    <api>1.0.0</api>
+   </version>
+   <stability>
+    <release>stable</release>
+    <api>stable</api>
+   </stability>
+   <date>2010-02-10</date>
+   <license uri="http://www.symfony-project.org/license">MIT License</license>
+   <notes>Upgrade to SimplePie 1.2, compatibility with Symfony 1.4</notes>
   </release>
  </changelog>
 </package>
