@@ -42,8 +42,16 @@ class amSimplePie
       $sf_cache_dir = sfConfig::get('sf_root_cache_dir', sfConfig::get('sf_cache_dir'));
       $cache_location = $sf_cache_dir.DIRECTORY_SEPARATOR.'SimplePie';
 
+      /* Check the sfContext::getInstance availability.
+       * Necessary because, when running `php symfony test:unit`,
+       * there is no available instance and an exception is thrown.
+       */
+      if (sfContext::hasInstance())
+      {
+        $log = sfConfig::get('sf_logging_enabled') ? sfContext::getInstance()->getLogger() : false;
+      }
+
       // Thanks to sfSmartyViewPlugin - create cache directory if needed:
-      $log = sfConfig::get('sf_logging_enabled') ? sfContext::getInstance()->getLogger() : false;
       if (!file_exists($cache_location))
       {
         if (!mkdir($cache_location, 0777, true))
