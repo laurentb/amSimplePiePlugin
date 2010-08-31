@@ -28,8 +28,8 @@ $packagexml->setLicense('MIT License', 'http://www.symfony-project.org/license')
 
 // This will ADD a changelog entry to an existing package.xml
 $packagexml->setAPIVersion('1.0.0');
-$packagexml->setReleaseVersion('1.2.0');
-$packagexml->setNotes('Upgrade to SimplePie 1.2, compatibility with Symfony 1.4');
+$packagexml->setReleaseVersion('1.2.1');
+$packagexml->setNotes('Clément Herreman fixed an issue when calling amSP without a sfContext instance');
 
 $packagexml->setReleaseStability('stable');
 $packagexml->setAPIStability('stable');

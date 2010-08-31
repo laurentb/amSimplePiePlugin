@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<package packagerversion="1.6.2" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0
+<package packagerversion="1.9.0" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0
     http://pear.php.net/dtd/tasks-1.0.xsd
     http://pear.php.net/dtd/package-2.0
     http://pear.php.net/dtd/package-2.0.xsd">
@@ -19,10 +19,10 @@
   <email>fabriceb@allomatch.com</email>
   <active>yes</active>
  </lead>
- <date>2010-02-10</date>
- <time>22:00:27</time>
+ <date>2010-08-31</date>
+ <time>19:43:27</time>
  <version>
-  <release>1.2.0</release>
+  <release>1.2.1</release>
   <api>1.0.0</api>
  </version>
  <stability>
@@ -30,11 +30,12 @@
   <api>stable</api>
  </stability>
  <license uri="http://www.symfony-project.org/license">MIT License</license>
- <notes>Upgrade to SimplePie 1.2, compatibility with Symfony 1.4</notes>
+ <notes>
+Clément Herreman fixed an issue when calling amSP without a sfContext instance
+ </notes>
  <contents>
   <dir baseinstalldir="/" name="/">
-   <file baseinstalldir="/" md5sum="53764b2f1c0d21b5dc473c4489e87ef0" name="lib/amSimplePie.class.php" role="php" />
-   <file baseinstalldir="/" md5sum="c9074b080526ecdc5a0d4b7974a85dab" name="lib/vendor/simplepie-simplepie-eff7715.tar.gz" role="data" />
+   <file baseinstalldir="/" md5sum="3f345724e60f2ed1d22b28e73fab88a1" name="lib/amSimplePie.class.php" role="php" />
    <file baseinstalldir="/" md5sum="88e50b02d1d37491fbf4dfff38ed25ce" name="lib/vendor/simplepie/create.php" role="php" />
    <file baseinstalldir="/" md5sum="2377070dba7169692470a162614b8b29" name="lib/vendor/simplepie/LICENSE.txt" role="data" />
    <file baseinstalldir="/" md5sum="2f056eb773e99136023a9c4df80710d8" name="lib/vendor/simplepie/README.txt" role="data" />
@@ -46,7 +47,7 @@
    <file baseinstalldir="/" md5sum="e844d12e1c72013c1d6bcfd559c69fde" name="lib/vendor/simplepie/idn/npdata.ser" role="data" />
    <file baseinstalldir="/" md5sum="026b4ea20aacc2b801c3bf85099e2c23" name="lib/vendor/simplepie/idn/ReadMe.txt" role="data" />
    <file baseinstalldir="/" md5sum="51cdc6fda96d3aeb60959f07c08ed503" name="test/unit/amSimplePieTest.php" role="php" />
-   <file baseinstalldir="/" md5sum="36a32b85b9a585dda9c3834cbc115c8f" name="genpkgxml.php" role="php" />
+   <file baseinstalldir="/" md5sum="e3d72d19cc7afa979de99807fa190477" name="genpkgxml.php" role="php" />
    <file baseinstalldir="/" md5sum="684d2583831e84c78cfba91f9c818fde" name="LICENSE" role="doc" />
    <file baseinstalldir="/" md5sum="bb507fe830c3b8ae418cd97bfa7f7a44" name="README" role="doc" />
   </dir>
@@ -80,7 +81,9 @@
    </stability>
    <date>2009-03-29</date>
    <license uri="http://www.symfony-project.org/license">MIT License</license>
-   <notes>Upgrade to SimplePie 1.1.3, documentation fixes, compatibility with Symfony 1.1+</notes>
+   <notes>
+Upgrade to SimplePie 1.1.3, documentation fixes, compatibility with Symfony 1.1+
+   </notes>
   </release>
   <release>
    <version>
@@ -93,7 +96,24 @@
    </stability>
    <date>2010-02-10</date>
    <license uri="http://www.symfony-project.org/license">MIT License</license>
-   <notes>Upgrade to SimplePie 1.2, compatibility with Symfony 1.4</notes>
+   <notes>
+Upgrade to SimplePie 1.2, compatibility with Symfony 1.4
+   </notes>
+  </release>
+  <release>
+   <version>
+    <release>1.2.1</release>
+    <api>1.0.0</api>
+   </version>
+   <stability>
+    <release>stable</release>
+    <api>stable</api>
+   </stability>
+   <date>2010-08-31</date>
+   <license uri="http://www.symfony-project.org/license">MIT License</license>
+   <notes>
+Clément Herreman fixed an issue when calling amSP without a sfContext instance
+   </notes>
   </release>
  </changelog>
 </package>
