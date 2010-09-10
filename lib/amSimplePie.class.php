@@ -54,7 +54,8 @@ class amSimplePie
       // Thanks to sfSmartyViewPlugin - create cache directory if needed:
       if (!file_exists($cache_location))
       {
-        if (!mkdir($cache_location, 0777, true))
+        // Chmod after the mkdir, in case the umask is too restrictive
+        if (!(mkdir($cache_location, 0777, true) && chmod($cache_location, 0777)))
         {
           throw new sfCacheException('Unable to create cache directory "' . $cache_location . '"');
         }
